@@ -1,0 +1,30 @@
+# Local development overrides
+docker-compose.override.yml
+
+# Environment variables
+.env
+.env.local
+
+# Docker volumes and data (should not be committed)
+volumes/
+data/
+
+# Node modules
+node_modules/
+*/node_modules/
+
+# Logs
+*.log
+logs/
+*/logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+nul
+*.tmp
+*.swp
+
+backend/database/migrations/

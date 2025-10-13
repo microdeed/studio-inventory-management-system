@@ -1,0 +1,62 @@
+Equipment Barcode Convention
+=============================
+
+Format: [Category Abbr]-[count+year]-[unique ID]-[last 4 of serial]
+
+Example: XX-XXYY-XXXXX-XXXX
+
+Components:
+-----------
+1. Category Abbreviation (2 letters):
+   CA = Camera
+   LN = Lens
+   MI = Microphone
+   LG = Lighting
+   MS = Miscellaneous
+   GR = Grip
+   SD = Stand
+   SB = Strobe
+   MD = Modifier
+   DN = Drone
+   BY = Battery
+   RT = Remote
+   VL = Video Light
+   SR = Storage
+
+2. Count + Year (4 digits, CCYY):
+   Count (2 digits, 00-99):
+   - 00 = Single item (not part of multiples)
+   - 01-99 = Item number when part of a lot/multiples
+   - Example: If purchasing 5 identical SD cards, they would be numbered 01, 02, 03, 04, 05
+
+   Year (2 digits):
+   - Last 2 digits of year
+   - Example: 2024 = 24
+   - NO DASH between count and year
+
+3. Unique ID (5 digits, 00001-99999):
+   - Sequential number from database count
+   - Increments for each new equipment entry
+   - Unique across entire database for that category and year
+
+4. Last 4 of Serial Number (4 digits):
+   - Only added if the item has a serial number
+   - Used primarily for multiples to distinguish between identical items
+   - Optional field
+
+Examples:
+---------
+Single camera purchased in 2024:
+CA-0024-00001
+
+Three identical microphones with serial numbers purchased in 2023:
+MI-0123-00045-1234
+MI-0223-00046-5678
+MI-0323-00047-9012
+
+Lighting equipment without serial number (single):
+LG-0024-00123
+
+Two identical lenses with serial numbers:
+LN-0124-00201-8765
+LN-0224-00202-4321

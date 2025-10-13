@@ -1,0 +1,23 @@
+# Root-level .dockerignore
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+
+# CI/CD
+bitbucket-pipelines.yml
+.github/
+
+# Environment
+.env
+.env.*
+
+# Data directories (managed by volumes)
+data/
+
+# Misc
+.DS_Store

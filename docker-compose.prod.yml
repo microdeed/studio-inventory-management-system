@@ -1,0 +1,41 @@
+version: '3.8'
+
+# Production override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  backend:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${IMAGE_TAG:-latest}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      - NODE_ENV=production
+
+  frontend:
+    image: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${IMAGE_TAG:-latest}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

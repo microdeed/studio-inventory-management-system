@@ -1,0 +1,85 @@
+image: atlassian/default-image:3
+
+definitions:
+  services:
+    docker:
+      memory: 3072
+
+pipelines:
+  default:
+    - step:
+        name: Build and Test
+        services:
+          - docker
+        script:
+          - echo "Building Docker images..."
+          - docker --version
+          - docker-compose --version
+          - docker-compose build --no-cache
+          - echo "Build completed successfully"
+
+  branches:
+    main:
+      - step:
+          name: Build, Tag and Push to Registry
+          services:
+            - docker
+          script:
+            # Login to Docker registry (using Bitbucket or Docker Hub)
+            - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
+
+            # Build images
+            - echo "Building backend image..."
+            - docker build -t ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-backend:latest ./backend
+
+            - echo "Building frontend image..."
+            - docker build -t ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-frontend:latest ./frontend
+
+            # Tag with registry prefix
+            - docker tag ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}
+            - docker tag ${IMAGE_NAME:-inventory-app}-backend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
+            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}
+            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
+
+            # Push images
+            - echo "Pushing backend image..."
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
+
+            - echo "Pushing frontend image..."
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
+
+            - echo "Images pushed successfully!"
+            - echo "Backend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}"
+            - echo "Frontend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}"
+
+    develop:
+      - step:
+          name: Build Development Images
+          services:
+            - docker
+          script:
+            - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
+            - docker build -t ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} ./backend
+            - docker build -t ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} ./frontend
+            - docker tag ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT}
+            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT}
+
+  tags:
+    'v*':
+      - step:
+          name: Build and Push Release
+          services:
+            - docker
+          script:
+            - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
+            - export VERSION=${BITBUCKET_TAG#v}
+            - docker build -t ${IMAGE_NAME:-inventory-app}-backend:${VERSION} ./backend
+            - docker build -t ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} ./frontend
+            - docker tag ${IMAGE_NAME:-inventory-app}-backend:${VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}
+            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}
