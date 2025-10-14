@@ -1,14 +1,35 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Upload, Download, Database } from 'lucide-react';
+import { Settings as SettingsIcon, Upload, Download, Database, CheckCircle, XCircle, AlertCircle, Undo } from 'lucide-react';
+
+interface ImportResult {
+  imported: number;
+  errors: number;
+  errorList: string[];
+  equipmentIds: number[];
+}
 
 export const Settings: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [undoing, setUndoing] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('lastImportResult');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      setImportResult(null); // Clear previous results
     }
   };
 
@@ -20,23 +41,93 @@ export const Settings: React.FC = () => {
 
     try {
       setImporting(true);
+      setImportResult(null);
+
       const response = await fetch('/api/import/equipment', {
         method: 'POST',
         body: formData
       });
 
       const result = await response.json();
-      
+
       if (response.ok) {
-        alert(`Successfully imported ${result.imported} items. ${result.errors} errors.`);
+        // Extract equipment IDs from successful imports
+        const equipmentIds = result.results
+          .filter((r: any) => r.status === 'success')
+          .map((r: any) => r.id);
+
+        const importData = {
+          imported: result.imported,
+          errors: result.errors.length,
+          errorList: result.errors,
+          equipmentIds
+        };
+
+        setImportResult(importData);
+
+        // Save to localStorage for persistence
+        localStorage.setItem('lastImportResult', JSON.stringify(importData));
+
         setSelectedFile(null);
+
+        // Clear file input
+        const fileInput = document.getElementById('csv-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
       } else {
-        alert(`Import failed: ${result.error}`);
+        setImportResult({
+          imported: 0,
+          errors: 1,
+          errorList: [result.error || 'Import failed'],
+          equipmentIds: []
+        });
       }
     } catch (error) {
-      alert('Import failed: Network error');
+      setImportResult({
+        imported: 0,
+        errors: 1,
+        errorList: ['Network error: Could not connect to server'],
+        equipmentIds: []
+      });
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!importResult || importResult.equipmentIds.length === 0) return;
+
+    if (!window.confirm(`Are you sure you want to delete the ${importResult.imported} items you just imported? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setUndoing(true);
+
+      const response = await fetch('/api/import/undo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          equipmentIds: importResult.equipmentIds
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(`Successfully deleted ${result.deleted} items`);
+        setImportResult(null);
+
+        // Clear from localStorage
+        localStorage.removeItem('lastImportResult');
+      } else {
+        alert(`Undo failed: ${result.error}`);
+      }
+    } catch (error) {
+      alert('Undo failed: Network error');
+    } finally {
+      setUndoing(false);
     }
   };
 
@@ -104,7 +195,7 @@ export const Settings: React.FC = () => {
                   </div>
                 )}
                 
-                <button 
+                <button
                   onClick={handleImport}
                   disabled={!selectedFile || importing}
                   className="btn btn-success"
@@ -123,6 +214,65 @@ export const Settings: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {/* Import Results */}
+            {importResult && (
+              <div className="mt-6">
+                {importResult.imported > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="text-green-600 flex-shrink-0" size={20} />
+                        <div>
+                          <h4 className="font-semibold text-green-900">Import Successful</h4>
+                          <p className="text-sm text-green-700">
+                            Successfully imported {importResult.imported} equipment item{importResult.imported !== 1 ? 's' : ''}.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleUndo}
+                        disabled={undoing}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap text-sm font-medium transition-colors"
+                      >
+                        {undoing ? (
+                          <>
+                            <div className="loading-spinner w-4 h-4"></div>
+                            Undoing...
+                          </>
+                        ) : (
+                          <>
+                            <Undo size={16} />
+                            Undo Import
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {importResult.errors > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <XCircle className="text-red-600 flex-shrink-0" size={20} />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-red-900 mb-2">
+                          {importResult.errors} Error{importResult.errors !== 1 ? 's' : ''}
+                        </h4>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {importResult.errorList.map((error, index) => (
+                            <p key={index} className="text-sm text-red-700 flex items-start gap-2">
+                              <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                              <span>{error}</span>
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
