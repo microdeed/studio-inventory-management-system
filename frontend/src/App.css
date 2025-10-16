@@ -349,7 +349,7 @@
 }
 
 /* Mobile Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1400px) {
   .sidebar {
     position: fixed;
     left: 0;
@@ -414,7 +414,7 @@
   }
 
   /* Add padding to main content on mobile to account for fixed header */
-  @media (max-width: 768px) {
+  @media (max-width: 1400px) {
     .main-content {
       padding-top: calc(var(--spacing-lg) + 60px); /* Account for fixed mobile header */
     }
@@ -439,7 +439,7 @@
 }
 
 /* Hide mobile header on medium and larger screens */
-@media (min-width: 769px) {
+@media (min-width: 1401px) {
   .mobile-header {
     display: none !important;
     width: 0;

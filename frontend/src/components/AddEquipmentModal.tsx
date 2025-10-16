@@ -233,7 +233,7 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create equipment');
+        throw new Error(errorData.error || 'Failed to create entry');
       }
 
       onSuccess();
@@ -241,7 +241,7 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
     } catch (error: any) {
       console.error('Add equipment error:', error);
-      setError(error.message || 'Failed to create equipment');
+      setError(error.message || 'Failed to create entry');
     } finally {
       setLoading(false);
     }
@@ -615,7 +615,7 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
                 ) : (
                   <>
                     <Package size={18} />
-                    Create Equipment
+                    Create Entry
                   </>
                 )}
               </button>

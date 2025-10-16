@@ -138,7 +138,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <div className="font-medium truncate">{currentUser.fullName}</div>
                   <div className="text-xs opacity-75 truncate">@{currentUser.username}</div>
                   <div className="text-xs opacity-75 mt-0.5">
-                    <span className="px-1.5 py-0.5 bg-white bg-opacity-20 rounded">
+                    <span className="px-1.5 py-0.5 bg-opacity-20 rounded">
                       {currentUser.role}
                     </span>
                   </div>

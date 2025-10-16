@@ -1125,14 +1125,11 @@ export const Equipment: React.FC = () => {
             <p className="mb-4">
               Are you sure you want to delete <strong>{equipmentToDelete.name}</strong>?
             </p>
-            <p className="text-sm text-gray-600 mb-6">
-              This will mark the equipment as inactive. The equipment will no longer appear in the system.
               {equipmentToDelete.status === 'checked_out' && (
                 <span className="block mt-2 text-red-600 font-medium">
                   ⚠️ Warning: This equipment is currently checked out. It must be checked in before deletion.
                 </span>
               )}
-            </p>
             <div className="flex justify-end gap-2">
               <button
                 className="btn btn-secondary"
