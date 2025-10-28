@@ -51,6 +51,337 @@ If ports are already in use, you can modify them in:
 - Backend: `backend/server.js`
 - Frontend: `.env` file (create if needed)
 
+## Docker Compose Setup
+
+This project uses Docker Compose for containerized deployment with proper service orchestration, health checks, and persistent storage.
+
+### Container Stack Overview
+
+The application runs as a multi-container stack with two services:
+
+#### 1. Backend Container (`inventory-backend`)
+- **Base Image**: Node.js 18 Alpine
+- **Purpose**: RESTful API server with SQLite database
+- **Internal Port**: 5000
+- **Key Features**:
+  - Runs as non-root user for security
+  - Health checks via `/api/health` endpoint
+  - Persistent volumes for database, uploads, and logs
+  - Environment-based configuration
+
+#### 2. Frontend Container (`inventory-frontend`)
+- **Base Image**: Nginx Alpine
+- **Purpose**: Serves React application and proxies API requests
+- **External Port**: 80 (configurable via `FRONTEND_PORT`)
+- **Key Features**:
+  - Multi-stage build (Node.js build → Nginx serve)
+  - Reverse proxy for `/api` and `/uploads` routes to backend
+  - Gzip compression and security headers
+  - Client-side routing support
+
+### Service Dependencies & Startup Order
+
+The containers are configured with health check dependencies to ensure proper startup:
+
+```
+backend (starts first)
+   ↓
+health check passes (HTTP 200 from /api/health)
+   ↓
+frontend starts (depends_on: backend service_healthy)
+```
+
+This ensures:
+- Backend API is fully operational before frontend starts
+- No race conditions during initialization
+- Database migrations complete before accepting requests
+- Frontend never serves pages without a working API
+
+### Persistent Volumes
+
+Three named volumes maintain data across container restarts:
+
+| Volume | Purpose | Mount Path |
+|--------|---------|------------|
+| `inventory-db-data` | SQLite database file | `/app/data` |
+| `inventory-upload-data` | Equipment photos & attachments | `/app/uploads` |
+| `inventory-log-data` | Application logs | `/app/logs` |
+
+All volumes use the local driver and persist independently of containers.
+
+### Network Configuration
+
+- **Network**: Custom bridge network `inventory-network`
+- **Internal DNS**: Containers resolve each other by service name (`backend`, `frontend`)
+- **API Routing**: Frontend Nginx proxies `/api/*` → `http://backend:5000/api/*`
+- **Upload Access**: Frontend Nginx proxies `/uploads/*` → `http://backend:5000/uploads/*`
+
+### Docker Compose Files
+
+#### `docker-compose.yml` (Main Configuration)
+The primary configuration file defining:
+- Service definitions and build contexts
+- Volume mounts and persistent storage
+- Network setup
+- Health checks (30s interval, 3 retries)
+- Environment variables with defaults
+- Restart policies (`unless-stopped`)
+
+#### `docker-compose.prod.yml` (Production Overrides)
+Production-specific settings:
+- Uses pre-built images from registry instead of building
+- Resource limits (CPU: 1.0/0.5 cores, Memory: 512M/256M)
+- Logging configuration (10MB max, 3 file rotation)
+- `restart: always` policy
+- Image registry variables (`DOCKER_REGISTRY`, `DOCKER_USERNAME`, `IMAGE_TAG`)
+
+#### `docker-compose.override.yml` (Local Development)
+Automatic development overrides:
+- Bind mounts local database directory for easy access
+- Different database path for development isolation
+- Not committed to repository (local-only file)
+
+### Usage Instructions
+
+#### Development Mode
+Start both containers with build:
+```bash
+cd inventory
+docker-compose up -d
+```
+
+View logs:
+```bash
+docker-compose logs -f
+```
+
+Stop containers:
+```bash
+docker-compose down
+```
+
+#### Production Mode
+Using pre-built images with production settings:
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+#### Rebuild Containers
+After code changes:
+```bash
+docker-compose up -d --build
+```
+
+#### Check Container Status
+```bash
+docker-compose ps
+```
+
+#### Execute Commands in Containers
+```bash
+# Access backend shell
+docker-compose exec backend sh
+
+# Access frontend shell
+docker-compose exec frontend sh
+
+# Run database backup
+docker-compose exec backend node scripts/backup-db.js
+```
+
+### Environment Variables
+
+Configure these in a `.env` file at the project root:
+
+#### Backend Configuration
+```env
+# Server
+NODE_ENV=production
+PORT=5000
+
+# Database
+DB_PATH=/app/data/inventory.db
+
+# Uploads
+UPLOAD_DIR=/app/uploads
+MAX_FILE_SIZE=5242880
+
+# Security
+JWT_SECRET=your-secure-secret-here-change-in-production
+
+# QR Codes
+QR_CODE_SIZE=200
+```
+
+#### Frontend Configuration
+```env
+# Port mapping (host:container)
+FRONTEND_PORT=80
+```
+
+#### Production Image Registry
+```env
+DOCKER_REGISTRY=docker.io
+DOCKER_USERNAME=your-username
+IMAGE_NAME=inventory-app
+IMAGE_TAG=latest
+```
+
+### Building & Pushing Images
+
+#### Build Images Locally
+```bash
+# Build both services
+docker-compose build
+
+# Build specific service
+docker-compose build backend
+docker-compose build frontend
+```
+
+#### Tag and Push to Registry
+```bash
+# Tag images
+docker tag inventory-backend:latest your-registry/inventory-app-backend:v1.0.0
+docker tag inventory-frontend:latest your-registry/inventory-app-frontend:v1.0.0
+
+# Push to registry
+docker push your-registry/inventory-app-backend:v1.0.0
+docker push your-registry/inventory-app-frontend:v1.0.0
+```
+
+#### Pull and Deploy on Production Server
+```bash
+# Set environment variables
+export DOCKER_REGISTRY=your-registry.com
+export DOCKER_USERNAME=your-username
+export IMAGE_TAG=v1.0.0
+
+# Pull and start
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+### Health Checks
+
+Both containers implement health checks for monitoring:
+
+#### Backend Health Check
+- **Endpoint**: `http://localhost:5000/api/health`
+- **Interval**: 30 seconds
+- **Timeout**: 3 seconds
+- **Retries**: 3
+- **Start Period**: 10 seconds
+
+#### Frontend Health Check
+- **Method**: HTTP GET to `http://localhost:80/`
+- **Interval**: 30 seconds
+- **Timeout**: 3 seconds
+- **Retries**: 3
+- **Start Period**: 5 seconds
+
+Check health status:
+```bash
+docker-compose ps
+# Look for "(healthy)" in the State column
+```
+
+### Volume Management
+
+#### Backup Volumes
+```bash
+# Create backup of database volume
+docker run --rm -v inventory-db-data:/data -v $(pwd)/backups:/backup alpine tar czf /backup/db-backup-$(date +%Y%m%d).tar.gz -C /data .
+
+# Create backup of uploads volume
+docker run --rm -v inventory-upload-data:/data -v $(pwd)/backups:/backup alpine tar czf /backup/uploads-backup-$(date +%Y%m%d).tar.gz -C /data .
+```
+
+#### Restore Volumes
+```bash
+# Restore database volume
+docker run --rm -v inventory-db-data:/data -v $(pwd)/backups:/backup alpine tar xzf /backup/db-backup-20250101.tar.gz -C /data
+
+# Restore uploads volume
+docker run --rm -v inventory-upload-data:/data -v $(pwd)/backups:/backup alpine tar xzf /backup/uploads-backup-20250101.tar.gz -C /data
+```
+
+#### Inspect Volumes
+```bash
+# List volumes
+docker volume ls
+
+# Inspect volume details
+docker volume inspect inventory-db-data
+
+# Remove unused volumes (CAUTION: data loss)
+docker volume prune
+```
+
+### Security Considerations
+
+1. **JWT Secret**: Always set a strong `JWT_SECRET` in production
+2. **Non-root User**: Backend runs as `node` user (UID 1000)
+3. **Network Isolation**: Containers communicate via private bridge network
+4. **Nginx Security Headers**: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection
+5. **File Permissions**: Volumes owned by non-root users inside containers
+6. **Secrets Management**: Never commit `.env` file with production secrets
+
+### Troubleshooting Docker Issues
+
+#### Port Conflicts
+If port 80 is already in use:
+```bash
+# Use different port
+FRONTEND_PORT=8080 docker-compose up -d
+```
+
+#### View Container Logs
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# Last 100 lines
+docker-compose logs --tail=100 backend
+```
+
+#### Container Won't Start
+```bash
+# Check status
+docker-compose ps
+
+# Inspect container
+docker-compose inspect backend
+
+# Check health status
+docker-compose exec backend wget -qO- http://localhost:5000/api/health
+```
+
+#### Database Locked
+```bash
+# Ensure only one backend instance running
+docker-compose ps backend
+
+# Restart backend
+docker-compose restart backend
+```
+
+#### Reset Everything
+```bash
+# Stop and remove containers, networks
+docker-compose down
+
+# Remove volumes (CAUTION: deletes all data)
+docker-compose down -v
+
+# Start fresh
+docker-compose up -d --build
+```
+
 ## Project Structure
 
 ```

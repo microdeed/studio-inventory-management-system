@@ -407,14 +407,400 @@ For issues or questions:
 - Internal communication: Service names (backend, frontend)
 - External access: Frontend only via port 80
 
+## Docker Image Distribution via Git Repository
+
+This section covers managing and distributing Docker images through the Bitbucket repository.
+
+### Why Store Images in the Repository?
+
+When you don't have access to a container registry (Docker Hub, AWS ECR, etc.), you can distribute Docker images through your Git repository:
+
+- Share images with team members without a registry
+- Version control for images alongside code
+- Works in air-gapped or restricted network environments
+- Simple deployment to environments without build capabilities
+
+### Image Export and Push Workflow
+
+#### 1. Build Docker Images
+
+```bash
+# Build all services
+docker-compose build
+
+# Or build individually
+docker-compose build backend
+docker-compose build frontend
+```
+
+#### 2. Export Images to Tar Files
+
+```bash
+# Export backend image
+docker save -o inventory-backend.tar inventory-backend:latest
+
+# Export frontend image
+docker save -o inventory-frontend.tar inventory-frontend:latest
+
+# Verify tar files were created
+ls -lh *.tar
+```
+
+#### 3. Switch to Images Branch
+
+```bash
+# Create and switch to images branch (first time)
+git checkout -b main/release/images
+
+# Or switch to existing branch
+git checkout main/release/images
+```
+
+#### 4. Add and Commit Images
+
+```bash
+# Add tar files to git
+git add inventory-backend.tar inventory-frontend.tar
+
+# Commit with descriptive message
+git commit -m "Update Docker images - $(date +%Y-%m-%d)"
+
+# Or with version tag
+git commit -m "Docker images v1.0.0 - Production release"
+```
+
+#### 5. Push to Bitbucket
+
+```bash
+# Push to remote (first time)
+git push -u origin main/release/images
+
+# Subsequent pushes
+git push origin main/release/images
+```
+
+#### 6. Return to Main Branch
+
+```bash
+# Switch back to main branch
+git checkout main
+
+# Optional: Delete local tar files to save space
+rm inventory-backend.tar inventory-frontend.tar
+```
+
+### Image Import and Load Workflow
+
+#### 1. Clone or Pull Images Branch
+
+```bash
+# Clone repository if not already done
+git clone https://bitbucket.org/your-org/inventory.git
+cd inventory
+
+# Fetch and checkout images branch
+git fetch origin main/release/images
+git checkout main/release/images
+```
+
+#### 2. Load Images into Docker
+
+```bash
+# Load backend image
+docker load -i inventory-backend.tar
+
+# Load frontend image
+docker load -i inventory-frontend.tar
+
+# Verify images are loaded
+docker images | grep inventory
+```
+
+#### 3. Switch Back and Deploy
+
+```bash
+# Return to main branch
+git checkout main
+
+# Start containers using loaded images
+docker-compose up -d
+```
+
+### Complete Workflow Example
+
+**Developer Workflow (Build and Push):**
+
+```bash
+# 1. Build images from current code
+docker-compose build
+
+# 2. Export to tar files
+docker save -o inventory-backend.tar inventory-backend:latest
+docker save -o inventory-frontend.tar inventory-frontend:latest
+
+# 3. Switch to images branch
+git checkout -b main/release/images
+
+# 4. Commit and push
+git add inventory-backend.tar inventory-frontend.tar
+git commit -m "Docker images - $(date +%Y-%m-%d)"
+git push -u origin main/release/images
+
+# 5. Clean up
+git checkout main
+rm *.tar
+```
+
+**Deployment Workflow (Pull and Load):**
+
+```bash
+# 1. Get latest images from repository
+git fetch origin main/release/images
+git checkout main/release/images
+
+# 2. Load images
+docker load -i inventory-backend.tar
+docker load -i inventory-frontend.tar
+
+# 3. Return to main branch
+git checkout main
+
+# 4. Start application
+docker-compose up -d
+
+# 5. Verify deployment
+docker-compose ps
+curl http://localhost/api/health
+```
+
+### Image Management Best Practices
+
+#### Version Tagging
+
+```bash
+# Tag images with version before saving
+docker tag inventory-backend:latest inventory-backend:v1.0.0
+docker tag inventory-frontend:latest inventory-frontend:v1.0.0
+
+# Save with version tag
+docker save -o inventory-backend-v1.0.0.tar inventory-backend:v1.0.0
+docker save -o inventory-frontend-v1.0.0.tar inventory-frontend:v1.0.0
+
+# Commit with clear version
+git commit -m "Release v1.0.0 - Docker images"
+git tag v1.0.0
+git push origin main/release/images --tags
+```
+
+#### Image Size Considerations
+
+```bash
+# Check tar file sizes
+ls -lh *.tar
+
+# Optimize images before export
+docker image prune -f
+docker-compose build --no-cache
+
+# Compress tar files (optional, if size is critical)
+gzip inventory-backend.tar
+gzip inventory-frontend.tar
+
+# Load compressed images
+gunzip -c inventory-backend.tar.gz | docker load
+gunzip -c inventory-frontend.tar.gz | docker load
+```
+
+#### Branch Organization
+
+```
+Repository Branches:
+├── main                    # Source code
+├── develop                 # Development code
+└── main/release/images     # Docker images (.tar files)
+    ├── inventory-backend.tar
+    ├── inventory-frontend.tar
+    └── README.md (version info)
+```
+
+#### Create Image Release Notes
+
+Create a README in the images branch:
+
+```bash
+# On main/release/images branch
+cat > README.md << 'EOF'
+# Docker Images
+
+## Latest Release
+
+- **Date**: 2025-10-16
+- **Version**: v1.0.0
+- **Backend Image**: inventory-backend.tar (150MB)
+- **Frontend Image**: inventory-frontend.tar (25MB)
+
+## Load Instructions
+
+```bash
+docker load -i inventory-backend.tar
+docker load -i inventory-frontend.tar
+docker-compose up -d
+```
+
+## Version History
+
+- v1.0.0 (2025-10-16) - Initial production release
+EOF
+
+git add README.md
+git commit -m "Add image documentation"
+git push origin main/release/images
+```
+
+### Troubleshooting Image Distribution
+
+#### Image Not Loading
+
+```bash
+# Verify tar file integrity
+file inventory-backend.tar
+
+# Check tar file is not corrupted
+tar -tzf inventory-backend.tar > /dev/null
+
+# Re-export if needed
+docker save -o inventory-backend.tar inventory-backend:latest
+```
+
+#### Git Push Fails (File Too Large)
+
+```bash
+# Check file size
+ls -lh *.tar
+
+# If files are too large for Git (>100MB), consider:
+# 1. Use Git LFS (Large File Storage)
+git lfs install
+git lfs track "*.tar"
+git add .gitattributes
+git add *.tar
+git commit -m "Add Docker images via Git LFS"
+git push origin main/release/images
+
+# 2. Or use compression
+gzip *.tar
+git add *.tar.gz
+```
+
+#### Wrong Image Version Loaded
+
+```bash
+# Check loaded images
+docker images | grep inventory
+
+# Remove old images
+docker rmi inventory-backend:old-tag
+docker rmi inventory-frontend:old-tag
+
+# Load correct version
+docker load -i inventory-backend.tar
+docker images | grep inventory
+```
+
+### Automated Image Export Script
+
+Create a helper script `scripts/export-images.sh`:
+
+```bash
+#!/bin/bash
+
+# Build and export Docker images to tar files
+
+set -e
+
+echo "Building Docker images..."
+docker-compose build
+
+echo "Exporting backend image..."
+docker save -o inventory-backend.tar inventory-backend:latest
+
+echo "Exporting frontend image..."
+docker save -o inventory-frontend.tar inventory-frontend:latest
+
+echo "Images exported successfully:"
+ls -lh inventory-*.tar
+
+echo ""
+echo "Next steps:"
+echo "1. git checkout main/release/images"
+echo "2. git add inventory-*.tar"
+echo "3. git commit -m \"Docker images - \$(date +%Y-%m-%d)\""
+echo "4. git push origin main/release/images"
+```
+
+Make it executable:
+
+```bash
+chmod +x scripts/export-images.sh
+./scripts/export-images.sh
+```
+
+### Automated Image Import Script
+
+Create a helper script `scripts/import-images.sh`:
+
+```bash
+#!/bin/bash
+
+# Import Docker images from tar files
+
+set -e
+
+CURRENT_BRANCH=$(git branch --show-current)
+
+echo "Fetching images branch..."
+git fetch origin main/release/images
+
+echo "Switching to images branch..."
+git checkout main/release/images
+
+echo "Loading backend image..."
+docker load -i inventory-backend.tar
+
+echo "Loading frontend image..."
+docker load -i inventory-frontend.tar
+
+echo "Returning to original branch..."
+git checkout "$CURRENT_BRANCH"
+
+echo ""
+echo "Images loaded successfully:"
+docker images | grep inventory
+
+echo ""
+echo "To start the application:"
+echo "docker-compose up -d"
+```
+
+Make it executable:
+
+```bash
+chmod +x scripts/import-images.sh
+./scripts/import-images.sh
+```
+
 ## Files Structure
 
 ```
 inventory/
 ├── docker-compose.yml          # Orchestration configuration
+├── docker-compose.prod.yml     # Production overrides
 ├── .env.example               # Environment template
 ├── .env                       # Your configuration (gitignored)
 ├── bitbucket-pipelines.yml    # CI/CD configuration
+├── scripts/
+│   ├── export-images.sh       # Image export helper
+│   └── import-images.sh       # Image import helper
 ├── backend/
 │   ├── Dockerfile             # Backend image definition
 │   ├── .dockerignore          # Build exclusions
@@ -425,4 +811,16 @@ inventory/
 │   ├── .dockerignore          # Build exclusions
 │   └── ...
 └── DOCKER.md                  # This file
+```
+
+## Branch Structure
+
+```
+Repository Branches:
+├── main                       # Main source code
+├── develop                    # Development branch
+└── main/release/images        # Docker images (.tar files)
+    ├── inventory-backend.tar  # Backend Docker image
+    ├── inventory-frontend.tar # Frontend Docker image
+    └── README.md             # Image version info
 ```
