@@ -101,6 +101,11 @@ router.post('/equipment', upload.single('csvFile'), async (req, res) => {
                     continue;
                 }
 
+                // Normalize condition to lowercase to handle case variations
+                if (equipmentData.condition) {
+                    equipmentData.condition = equipmentData.condition.toLowerCase().trim();
+                }
+
                 // Validate condition value (CSV should already have normalized values from database)
                 const validConditions = ['brand_new', 'functional', 'normal', 'worn', 'out_of_commission', 'broken'];
                 if (equipmentData.condition && !validConditions.includes(equipmentData.condition)) {

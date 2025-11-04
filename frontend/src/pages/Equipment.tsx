@@ -170,8 +170,14 @@ export const Equipment: React.FC = () => {
 
       const response = await fetch(`/api/equipment?${params}`);
       const data = await response.json();
-      
-      setEquipment(data.data || []);
+
+      // Normalize purchase dates for all equipment items
+      const normalizedEquipment = (data.data || []).map((item: Equipment) => ({
+        ...item,
+        purchase_date: normalizeDateForInput(item.purchase_date)
+      }));
+
+      setEquipment(normalizedEquipment);
       setTotalPages(data.pagination?.pages || 1);
     } catch (error) {
       console.error('Failed to fetch equipment:', error);
@@ -244,12 +250,42 @@ export const Equipment: React.FC = () => {
     return conditionMigrationMap[oldCondition] || 'normal'; // Default to 'normal' if unknown
   };
 
+  // Normalize date to YYYY-MM-DD format for HTML5 date input
+  const normalizeDateForInput = (dateValue: string | null | undefined): string => {
+    if (!dateValue) return '';
+
+    // If already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+
+    // Handle MM/DD/YYYY format
+    const mmddyyyyMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mmddyyyyMatch) {
+      const [, month, day, year] = mmddyyyyMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try parsing as Date object as fallback
+    try {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.warn('Failed to parse date:', dateValue);
+    }
+
+    return '';
+  };
+
   const handleViewEquipment = (item: Equipment) => {
     setSelectedEquipment(item);
-    // Migrate old condition values to new standardized values
+    // Migrate old condition values to new standardized values and normalize dates
     const migratedItem = {
       ...item,
-      condition: migrateConditionValue(item.condition)
+      condition: migrateConditionValue(item.condition),
+      purchase_date: normalizeDateForInput(item.purchase_date)
     };
     setEditedEquipment(migratedItem);
     setIsEditing(false);
@@ -987,6 +1023,12 @@ export const Equipment: React.FC = () => {
                     </div>
                     <div>
                       <strong>QR Code:</strong> {selectedEquipment.qr_code}
+                    </div>
+                    <div>
+                      <strong>Purchase Date:</strong> {selectedEquipment.purchase_date ? format(new Date(selectedEquipment.purchase_date), 'MMM d, yyyy') : 'N/A'}
+                    </div>
+                    <div>
+                      <strong>Condition:</strong> {selectedEquipment.condition ? selectedEquipment.condition.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
                     </div>
                     {selectedEquipment.checked_out_by_name && (
                       <div className="col-span-2">
