@@ -8,9 +8,18 @@ import { CheckInOut } from './pages/CheckInOut.tsx';
 import { Users } from './pages/Users.tsx';
 import { Reports } from './pages/Reports.tsx';
 import { Settings } from './pages/Settings.tsx';
+import { InactivityWarningModal } from './components/InactivityWarningModal.tsx';
+import { useActivityTracker } from './hooks/useActivityTracker.ts';
+import { useInactivityWarning } from './hooks/useInactivityWarning.ts';
 import './App.css';
 
 function App() {
+  // Monitor for inactivity and show warning modal
+  const { showWarning, secondsRemaining, handleStayLoggedIn, handleLogout } = useInactivityWarning();
+
+  // Track user activity to keep session alive (pause when warning modal is open)
+  useActivityTracker(showWarning);
+
   return (
     <Router>
       <AuthWall>
@@ -26,6 +35,14 @@ function App() {
             </Routes>
           </Layout>
         </div>
+
+        {/* Inactivity Warning Modal */}
+        <InactivityWarningModal
+          isOpen={showWarning}
+          secondsRemaining={secondsRemaining}
+          onStayLoggedIn={handleStayLoggedIn}
+          onLogout={handleLogout}
+        />
       </AuthWall>
     </Router>
   );

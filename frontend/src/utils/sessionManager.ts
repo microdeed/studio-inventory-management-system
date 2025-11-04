@@ -11,19 +11,23 @@ interface UserSession {
   role: string;
   department?: string;
   loginTime: number;
+  lastActivityTime: number;
 }
 
 const SESSION_KEY = 'inventory_user_session';
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+const GUARANTEED_SESSION_TIME = 30 * 60 * 1000; // 30 minutes - no timeout during this period
+const INACTIVITY_TIMEOUT = 6 * 60 * 1000; // 6 minutes - applies after guaranteed session time
 
 export const sessionManager = {
   /**
    * Save user session to sessionStorage
    */
-  setSession: (session: Omit<UserSession, 'loginTime'>) => {
+  setSession: (session: Omit<UserSession, 'loginTime' | 'lastActivityTime'>) => {
+    const now = Date.now();
     const sessionData: UserSession = {
       ...session,
-      loginTime: Date.now()
+      loginTime: now,
+      lastActivityTime: now
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
   },
@@ -31,6 +35,10 @@ export const sessionManager = {
   /**
    * Get current user session
    * Returns null if no session or session is expired
+   *
+   * Session timeout logic:
+   * - First 30 minutes: No timeout, user stays logged in regardless of activity
+   * - After 30 minutes: 6-minute inactivity timeout applies
    */
   getSession: (): UserSession | null => {
     const sessionStr = sessionStorage.getItem(SESSION_KEY);
@@ -38,10 +46,17 @@ export const sessionManager = {
 
     try {
       const session: UserSession = JSON.parse(sessionStr);
+      const now = Date.now();
+      const sessionAge = now - session.loginTime;
 
-      // Check if session is expired
-      const sessionAge = Date.now() - session.loginTime;
-      if (sessionAge > SESSION_TIMEOUT) {
+      // Phase 1: First 30 minutes - no inactivity timeout
+      if (sessionAge < GUARANTEED_SESSION_TIME) {
+        return session;
+      }
+
+      // Phase 2: After 30 minutes - check for 6 minutes of inactivity
+      const inactivityDuration = now - session.lastActivityTime;
+      if (inactivityDuration > INACTIVITY_TIMEOUT) {
         sessionManager.clearSession();
         return null;
       }
@@ -81,5 +96,22 @@ export const sessionManager = {
   getUserRole: (): string | null => {
     const session = sessionManager.getSession();
     return session ? session.role : null;
+  },
+
+  /**
+   * Update last activity time to current time
+   * Call this whenever user performs an action to keep session alive
+   */
+  updateActivity: () => {
+    const sessionStr = sessionStorage.getItem(SESSION_KEY);
+    if (!sessionStr) return;
+
+    try {
+      const session: UserSession = JSON.parse(sessionStr);
+      session.lastActivityTime = Date.now();
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } catch (error) {
+      console.error('Failed to update activity time:', error);
+    }
   }
 };
