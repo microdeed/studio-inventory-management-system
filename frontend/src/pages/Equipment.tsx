@@ -12,7 +12,7 @@ import {
   QrCode,
   Lock
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatInCentral } from '../utils/dateUtils.ts';
 import { AddEquipmentModal } from '../components/AddEquipmentModal.tsx';
 import { sessionManager } from '../utils/sessionManager.ts';
 
@@ -635,7 +635,7 @@ export const Equipment: React.FC = () => {
                             <div className="text-sm font-medium">{item.checked_out_by_name}</div>
                             {item.checkout_date && (
                               <div className="text-xs text-gray-500">
-                                Since {format(new Date(item.checkout_date), 'MMM d, yyyy')}
+                                Since {formatInCentral(item.checkout_date, 'MMM d, yyyy')}
                               </div>
                             )}
                           </div>
@@ -646,7 +646,7 @@ export const Equipment: React.FC = () => {
                       <td>
                         {item.expected_return_date ? (
                           <div className="text-sm text-gray-700">
-                            {format(new Date(item.expected_return_date), 'MMM d, yyyy')}
+                            {formatInCentral(item.expected_return_date, 'MMM d, yyyy')}
                           </div>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -1025,7 +1025,7 @@ export const Equipment: React.FC = () => {
                       <strong>QR Code:</strong> {selectedEquipment.qr_code}
                     </div>
                     <div>
-                      <strong>Purchase Date:</strong> {selectedEquipment.purchase_date ? format(new Date(selectedEquipment.purchase_date), 'MMM d, yyyy') : 'N/A'}
+                      <strong>Purchase Date:</strong> {selectedEquipment.purchase_date ? formatInCentral(selectedEquipment.purchase_date, 'MMM d, yyyy') : 'N/A'}
                     </div>
                     <div>
                       <strong>Condition:</strong> {selectedEquipment.condition ? selectedEquipment.condition.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
@@ -1035,7 +1035,7 @@ export const Equipment: React.FC = () => {
                         <strong>Checked Out By:</strong> {selectedEquipment.checked_out_by_name}
                         {selectedEquipment.checkout_date && (
                           <span className="text-gray-500 ml-2">
-                            (since {format(new Date(selectedEquipment.checkout_date), 'MMM d, yyyy')})
+                            (since {formatInCentral(selectedEquipment.checkout_date, 'MMM d, yyyy')})
                           </span>
                         )}
                       </div>

@@ -9,7 +9,7 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { formatInCentral, addDaysInCentral, getCurrentCentralDateForInput } from '../utils/dateUtils.ts';
 import { sessionManager } from '../utils/sessionManager.ts';
 
 interface Equipment {
@@ -55,7 +55,7 @@ export const CheckInOut: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<number[]>([]);
-  const [expectedReturnDate, setExpectedReturnDate] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+  const [expectedReturnDate, setExpectedReturnDate] = useState(addDaysInCentral(7));
   const [purpose, setPurpose] = useState<'events' | 'marketing' | 'personal' | ''>('');
   const [returnLocation, setReturnLocation] = useState<'studio' | 'vault'>('studio');
   const [returnCondition, setReturnCondition] = useState<string>(''); // Empty string means "keep current"
@@ -377,7 +377,7 @@ export const CheckInOut: React.FC = () => {
   const resetForm = () => {
     setSelectedEquipment([]);
     setNotes('');
-    setExpectedReturnDate(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+    setExpectedReturnDate(addDaysInCentral(7));
     setPurpose('');
     setReturnLocation('studio');
     setReturnCondition(''); // Reset to "keep current"
@@ -689,7 +689,7 @@ export const CheckInOut: React.FC = () => {
                             Checked out by: {item.checked_out_by_name}
                             {item.checkout_date && (
                               <span className="ml-1">
-                                ({format(new Date(item.checkout_date), 'MMM d')})
+                                ({formatInCentral(item.checkout_date, 'MMM d')})
                               </span>
                             )}
                           </div>
@@ -764,7 +764,7 @@ export const CheckInOut: React.FC = () => {
                     className="form-control"
                     value={expectedReturnDate}
                     onChange={(e) => setExpectedReturnDate(e.target.value)}
-                    min={format(new Date(), 'yyyy-MM-dd')}
+                    min={getCurrentCentralDateForInput()}
                   />
                 </div>
               )}

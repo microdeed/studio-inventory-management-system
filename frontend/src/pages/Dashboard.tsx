@@ -9,7 +9,7 @@ import {
   Activity,
   TrendingUp
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatInCentral } from '../utils/dateUtils.ts';
 
 interface DashboardData {
   summary: {
@@ -175,7 +175,7 @@ export const Dashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">
-                      {format(new Date(activity.created_at), 'MMM d, HH:mm')}
+                      {formatInCentral(activity.created_at, 'MMM d, HH:mm')}
                     </div>
                   </div>
                 ))}
@@ -221,7 +221,7 @@ export const Dashboard: React.FC = () => {
                           {Math.floor(item.days_overdue)} days overdue
                         </div>
                         <div className="text-xs text-gray-500">
-                          Due: {format(new Date(item.expected_return_date), 'MMM d, yyyy')}
+                          Due: {formatInCentral(item.expected_return_date, 'MMM d, yyyy')}
                         </div>
                       </div>
                     </div>
