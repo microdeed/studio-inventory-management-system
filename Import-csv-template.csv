@@ -1,0 +1,2 @@
+id,name,serial_number,barcode,model,manufacturer,category,purchase_date,purchase_price,current_value,condition,location,description,notes,image_path,qr_code,is_active,created_at,updated_at,status,included_in_kit,kit_contents
+,Canon,33706231,,,,Camera,11/3/2025,2100,,Functional,Studio,,,,,,,,,,

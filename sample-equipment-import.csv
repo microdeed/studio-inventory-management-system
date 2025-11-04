@@ -1,6 +1,0 @@
-name,serial_number,barcode,model,manufacturer,type,condition,location,purchase_date,purchase_price,current_value,description,notes
-Sony A7 III,SN12345,123456789012,A7III,Sony,Video,functional,Studio A,2023-01-15,2000.00,1800.00,Full-frame mirrorless camera,Excellent condition
-Shure SM7B,SN67890,987654321098,SM7B,Shure,Audio,brand_new,Studio B,2023-02-20,399.00,399.00,Dynamic microphone,New in box
-MacBook Pro 16,SN11223,456789123456,M1 Pro,Apple,Computing,functional,Edit Bay,2022-11-10,2499.00,2200.00,16-inch laptop,16GB RAM
-LED Panel,SN44556,789123456789,LED1200,Aputure,Lighting,normal,Equipment Room,2022-08-05,600.00,500.00,1200W LED light,Works great
-XLR Cable 10ft,,,XLR-10,Mogami,Cables,functional,Cable Rack,2023-03-12,25.00,20.00,10ft XLR cable,Gold connectors

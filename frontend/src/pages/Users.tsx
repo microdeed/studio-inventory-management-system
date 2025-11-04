@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Users as UsersIcon, Plus, Mail, Building, Lock } from 'lucide-react';
+import { Users as UsersIcon, Plus, Mail, Building, Lock, Key } from 'lucide-react';
 import { AddUserModal } from '../components/AddUserModal.tsx';
+import { ChangePinModal } from '../components/ChangePinModal.tsx';
 import { sessionManager } from '../utils/sessionManager.ts';
 
 interface User {
@@ -29,6 +30,9 @@ export const Users: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [pinChangeUser, setPinChangeUser] = useState<User | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   // Access control: Only admins can manage users
   const isAdmin = currentUserRole === 'admin';
@@ -36,12 +40,13 @@ export const Users: React.FC = () => {
   useEffect(() => {
     fetchUsers();
 
-    // Get current user's role from session
+    // Get current user's role and ID from session
     const session = sessionManager.getSession();
     if (session) {
       console.log('[Users] Session found:', session);
       console.log('[Users] User role:', session.role);
       setCurrentUserRole(session.role);
+      setCurrentUserId(session.userId);
     } else {
       console.log('[Users] No session found');
     }
@@ -69,6 +74,16 @@ export const Users: React.FC = () => {
     setSelectedUser(user);
     setEditedUser({...user});
     setShowEditModal(true);
+  };
+
+  const handleChangePin = (user: User) => {
+    setPinChangeUser(user);
+    setShowChangePinModal(true);
+  };
+
+  const handlePinChangeSuccess = () => {
+    alert('✓ PIN updated successfully!');
+    // No need to refresh users list since PIN is not displayed
   };
 
   const handleSaveUser = async () => {
@@ -249,7 +264,7 @@ export const Users: React.FC = () => {
                     <th>Department</th>
                     <th>Role</th>
                     <th>Equipment Usage</th>
-                    {isAdmin && <th>Actions</th>}
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -295,23 +310,39 @@ export const Users: React.FC = () => {
                           <div className="text-orange-600">Active: {user.active_checkouts}</div>
                         </div>
                       </td>
-                      {isAdmin && (
+                      {(isAdmin || user.id === currentUserId) && (
                         <td>
                           <div className="flex gap-1">
+                            {isAdmin && (
+                              <>
+                                <button
+                                  className="btn btn-sm btn-secondary"
+                                  onClick={() => handleEditUser(user)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => {
+                                    setUserToDelete(user);
+                                    setShowDeleteConfirm(true);
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
                             <button
-                              className="btn btn-sm btn-secondary"
-                              onClick={() => handleEditUser(user)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => {
-                                setUserToDelete(user);
-                                setShowDeleteConfirm(true);
+                              className="btn btn-sm"
+                              style={{
+                                backgroundColor: '#10b981',
+                                color: 'white'
                               }}
+                              onClick={() => handleChangePin(user)}
+                              title={isAdmin && user.id !== currentUserId ? 'Reset user PIN' : 'Change your PIN'}
                             >
-                              Delete
+                              <Key size={14} style={{ marginRight: '4px' }} />
+                              {isAdmin && user.id !== currentUserId ? 'Reset PIN' : 'Change PIN'}
                             </button>
                           </div>
                         </td>
@@ -563,6 +594,21 @@ export const Users: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Change PIN Modal */}
+      {pinChangeUser && (
+        <ChangePinModal
+          isOpen={showChangePinModal}
+          onClose={() => {
+            setShowChangePinModal(false);
+            setPinChangeUser(null);
+          }}
+          onSuccess={handlePinChangeSuccess}
+          userId={pinChangeUser.id}
+          targetUserName={pinChangeUser.full_name}
+          isAdminReset={isAdmin && pinChangeUser.id !== currentUserId}
+        />
       )}
     </div>
   );

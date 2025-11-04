@@ -4,6 +4,7 @@
 .git/
 .gitignore
 .gitattributes
+.claude
 
 # Documentation
 *.md
