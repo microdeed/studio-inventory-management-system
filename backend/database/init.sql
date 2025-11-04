@@ -62,6 +62,7 @@ CREATE TABLE transactions (
     actual_return_date DATETIME,
     condition_on_checkout VARCHAR(20),
     condition_on_return VARCHAR(20),
+    purpose VARCHAR(50), -- 'events', 'marketing', 'personal' (required for checkout/reservation)
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER,
@@ -151,6 +152,7 @@ CREATE INDEX idx_transactions_equipment ON transactions(equipment_id);
 CREATE INDEX idx_transactions_user ON transactions(user_id);
 CREATE INDEX idx_transactions_type ON transactions(transaction_type);
 CREATE INDEX idx_transactions_dates ON transactions(checkout_date, actual_return_date);
+CREATE INDEX idx_transactions_purpose ON transactions(purpose);
 CREATE INDEX idx_activity_log_user ON activity_log(user_id);
 CREATE INDEX idx_activity_log_entity ON activity_log(entity_type, entity_id);
 CREATE INDEX idx_activity_log_created ON activity_log(created_at);

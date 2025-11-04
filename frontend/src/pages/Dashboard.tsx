@@ -26,6 +26,7 @@ interface DashboardData {
     created_at: string;
     equipment_name: string;
     user_name: string;
+    purpose?: string;
   }[];
 }
 
@@ -166,6 +167,11 @@ export const Dashboard: React.FC = () => {
                       <div className="text-sm text-gray-600">
                         {activity.transaction_type === 'checkout' ? 'Checked out by' : 'Checked in by'}{' '}
                         {activity.user_name}
+                        {activity.purpose && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                            {activity.purpose.charAt(0).toUpperCase() + activity.purpose.slice(1)}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-xs text-gray-500">

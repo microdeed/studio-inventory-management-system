@@ -56,6 +56,7 @@ export const CheckInOut: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<number[]>([]);
   const [expectedReturnDate, setExpectedReturnDate] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+  const [purpose, setPurpose] = useState<'events' | 'marketing' | 'personal' | ''>('');
   const [returnLocation, setReturnLocation] = useState<'studio' | 'vault'>('studio');
   const [returnCondition, setReturnCondition] = useState<string>(''); // Empty string means "keep current"
   const [notes, setNotes] = useState('');
@@ -213,6 +214,11 @@ export const CheckInOut: React.FC = () => {
       return;
     }
 
+    if (!purpose) {
+      setMessage({ type: 'error', text: 'Please select a purpose for this checkout.' });
+      return;
+    }
+
     if (!authenticatedUserId) {
       setMessage({ type: 'error', text: 'Session expired. Please reload the page.' });
       return;
@@ -257,6 +263,7 @@ export const CheckInOut: React.FC = () => {
               equipment_id: equipmentId,
               user_id: authenticatedUserId,
               expected_return_date: expectedReturnDate,
+              purpose: purpose,
               location: 'user', // Equipment goes with the user
               notes: notes,
               created_by: authenticatedUserId
@@ -371,6 +378,7 @@ export const CheckInOut: React.FC = () => {
     setSelectedEquipment([]);
     setNotes('');
     setExpectedReturnDate(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+    setPurpose('');
     setReturnLocation('studio');
     setReturnCondition(''); // Reset to "keep current"
     // Clear message after delay - longer for errors (15s) than success (5s)
@@ -758,6 +766,28 @@ export const CheckInOut: React.FC = () => {
                     onChange={(e) => setExpectedReturnDate(e.target.value)}
                     min={format(new Date(), 'yyyy-MM-dd')}
                   />
+                </div>
+              )}
+
+              {/* Purpose (Checkout only) */}
+              {mode === 'checkout' && (
+                <div className="form-group">
+                  <label className="form-label flex items-center gap-2">
+                    <Package size={16} />
+                    Purpose <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    className="form-control"
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value as 'events' | 'marketing' | 'personal' | '')}
+                    required
+                  >
+                    <option value="">Select Purpose...</option>
+                    <option value="events">Events</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="personal">Personal</option>
+                  </select>
+                  <small className="text-gray-500">What is the equipment being used for?</small>
                 </div>
               )}
 

@@ -80,6 +80,7 @@ router.post('/checkout', [
     body('equipment_id').isInt().withMessage('Equipment ID is required'),
     body('user_id').isInt().withMessage('User ID is required'),
     body('expected_return_date').isISO8601().withMessage('Expected return date is required'),
+    body('purpose').isIn(['events', 'marketing', 'personal']).withMessage('Purpose is required and must be one of: events, marketing, personal'),
     body('notes').optional().trim()
 ], async (req, res) => {
     try {
@@ -95,6 +96,7 @@ router.post('/checkout', [
             equipment_id,
             user_id,
             expected_return_date,
+            purpose,
             notes,
             created_by = user_id
         } = req.body;
@@ -154,9 +156,9 @@ router.post('/checkout', [
             const result = await database.run(`
                 INSERT INTO transactions (
                     equipment_id, user_id, transaction_type, checkout_date,
-                    expected_return_date, notes, created_by
-                ) VALUES (?, ?, 'checkout', datetime('now'), ?, ?, ?)
-            `, [equipment_id, user_id, expected_return_date, notes, created_by]);
+                    expected_return_date, purpose, notes, created_by
+                ) VALUES (?, ?, 'checkout', datetime('now'), ?, ?, ?, ?)
+            `, [equipment_id, user_id, expected_return_date, purpose, notes, created_by]);
 
             await database.commit();
 

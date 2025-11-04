@@ -44,7 +44,7 @@ router.get('/dashboard', async (req, res) => {
             database.get('SELECT COUNT(*) as count FROM users WHERE is_active = 1'),
             database.get('SELECT COUNT(*) as count FROM categories'),
             database.all(`
-                SELECT t.transaction_type, t.created_at,
+                SELECT t.transaction_type, t.created_at, t.purpose,
                        e.name as equipment_name, u.full_name as user_name
                 FROM transactions t
                 LEFT JOIN equipment e ON t.equipment_id = e.id
