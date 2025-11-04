@@ -17,6 +17,11 @@ export const InactivityWarningModal: React.FC<InactivityWarningModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Format time as MM:SS
+  const minutes = Math.floor(secondsRemaining / 60);
+  const seconds = secondsRemaining % 60;
+  const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
   const modalContent = (
     <div
       style={{
@@ -62,13 +67,10 @@ export const InactivityWarningModal: React.FC<InactivityWarningModalProps> = ({
           </p>
 
           {/* Countdown Timer */}
-          <div className="flex items-center justify-center gap-2 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
+          <div className="flex items-center justify-center gap-3 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
             <Clock size={32} className="text-yellow-600" />
-            <div className="text-4xl font-bold text-yellow-700">
-              {secondsRemaining}
-            </div>
-            <div className="text-sm text-yellow-600">
-              second{secondsRemaining !== 1 ? 's' : ''}
+            <div className="text-5xl font-bold text-yellow-700 font-mono">
+              {timeDisplay}
             </div>
           </div>
         </div>
@@ -95,7 +97,7 @@ export const InactivityWarningModal: React.FC<InactivityWarningModalProps> = ({
         {/* Help Text */}
         <div className="mt-4 pt-4 border-t text-center">
           <p className="text-xs text-gray-500">
-            Click anywhere on the page or press "Stay Logged In" to continue your session
+            Press "Stay Logged In" to continue your session
           </p>
         </div>
       </div>

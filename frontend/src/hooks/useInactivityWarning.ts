@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { sessionManager } from '../utils/sessionManager.ts';
 
 const GUARANTEED_SESSION_TIME = 30 * 60 * 1000; // 30 minutes
-const INACTIVITY_TIMEOUT = 6 * 60 * 1000; // 6 minutes
-const WARNING_THRESHOLD = 30 * 1000; // Show warning 30 seconds before timeout
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+const WARNING_THRESHOLD = 3 * 60 * 1000; // Show warning 3 minutes before timeout
 
 interface InactivityWarningState {
   showWarning: boolean;

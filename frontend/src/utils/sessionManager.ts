@@ -16,7 +16,7 @@ interface UserSession {
 
 const SESSION_KEY = 'inventory_user_session';
 const GUARANTEED_SESSION_TIME = 30 * 60 * 1000; // 30 minutes - no timeout during this period
-const INACTIVITY_TIMEOUT = 6 * 60 * 1000; // 6 minutes - applies after guaranteed session time
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes - applies after guaranteed session time
 
 export const sessionManager = {
   /**
