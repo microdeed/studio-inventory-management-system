@@ -242,13 +242,13 @@ router.post('/checkin', [
 
             // Verify that the user checking in is either:
             // 1. The same user who checked out the equipment
-            // 2. An admin or manager who can override
+            // 2. An admin who can override
             const isOriginalUser = activeTransaction.user_id === checked_in_by;
-            const isAdminOrManager = checkingInUser.role === 'admin' || checkingInUser.role === 'manager';
+            const isAdmin = checkingInUser.role === 'admin';
 
-            if (!isOriginalUser && !isAdminOrManager) {
+            if (!isOriginalUser && !isAdmin) {
                 throw new Error(
-                    `Only ${activeTransaction.checked_out_user_name} or an admin/manager can check in this equipment. ` +
+                    `Only ${activeTransaction.checked_out_user_name} or an admin can check in this equipment. ` +
                     `This equipment was checked out by ${activeTransaction.checked_out_user_name}.`
                 );
             }

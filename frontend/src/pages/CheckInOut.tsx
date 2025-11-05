@@ -154,9 +154,9 @@ export const CheckInOut: React.FC = () => {
 
       // Filter equipment based on authenticated user
       // Only show equipment checked out by the authenticated user
-      // (unless they're an admin/manager who can check in anyone's equipment)
+      // (unless they're an admin who can check in anyone's equipment)
       let filteredEquipment = data.data || [];
-      if (authenticatedUserRole !== 'admin' && authenticatedUserRole !== 'manager') {
+      if (authenticatedUserRole !== 'admin') {
         filteredEquipment = filteredEquipment.filter(item => item.checked_out_by_id === authenticatedUserId);
       }
 
