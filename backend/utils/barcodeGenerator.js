@@ -115,9 +115,8 @@ async function generateBarcode(categoryName = null, purchaseDate = null, count =
         // Get type code
         const typeCode = getTypeCode(categoryName);
 
-        // Get year (last 2 digits)
-        const date = purchaseDate ? new Date(purchaseDate) : new Date();
-        const year = date.getFullYear().toString().slice(-2);
+        // Get year (last 2 digits), or '00' if purchase date is unknown
+        const year = purchaseDate ? new Date(purchaseDate).getFullYear().toString().slice(-2) : '00';
 
         // Get next sequential number
         const sequentialNumber = await getNextSequentialNumber(typeCode, year);
@@ -136,8 +135,8 @@ async function generateBarcode(categoryName = null, purchaseDate = null, count =
         // Build barcode: XX-CCYY-NNNNN (no dash between count and year)
         let barcode = `${typeCode}-${countStr}${year}-${paddedNumber}`;
 
-        // Add last 4 of serial number if provided (for multiples)
-        if (serialNumber && serialNumber.length > 0) {
+        // Add last 4 of serial number if provided (only for multiples)
+        if (serialNumber && serialNumber.length > 0 && totalQuantity > 1) {
             const last4 = serialNumber.slice(-4).padStart(4, '0');
             barcode += `-${last4}`;
         }

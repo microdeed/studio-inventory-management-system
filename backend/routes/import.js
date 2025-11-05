@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const database = require('../database/connection');
 const { logActivity, getRequestInfo } = require('../utils/activityLogger');
+const { generateBarcode } = require('../utils/barcodeGenerator');
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -176,6 +177,22 @@ router.post('/equipment', upload.single('csvFile'), async (req, res) => {
                 // Use provided QR code or generate new one
                 const qr_code = equipmentData.qr_code || `EQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+                // Generate barcode if not provided in CSV
+                let barcode = equipmentData.barcode;
+                if (!barcode || barcode.trim() === '') {
+                    const categoryName = equipmentData.category_name?.trim() || null;
+                    barcode = await generateBarcode(
+                        categoryName,
+                        equipmentData.purchase_date,
+                        1, // Single item
+                        equipmentData.serial_number,
+                        1  // Total quantity
+                    );
+                    console.log(`[CSV Import] Generated barcode: ${barcode} for "${equipmentData.name}"`);
+                } else {
+                    console.log(`[CSV Import] Using CSV-provided barcode: ${barcode} for "${equipmentData.name}"`);
+                }
+
                 // Log what we're about to insert
                 console.log(`[CSV Import] Inserting equipment "${equipmentData.name}" with category_id: ${category_id}, status: ${equipmentData.status}`);
 
@@ -190,7 +207,7 @@ router.post('/equipment', upload.single('csvFile'), async (req, res) => {
                 `, [
                     equipmentData.name,
                     equipmentData.serial_number,
-                    equipmentData.barcode,
+                    barcode,
                     equipmentData.model,
                     equipmentData.manufacturer,
                     category_id,

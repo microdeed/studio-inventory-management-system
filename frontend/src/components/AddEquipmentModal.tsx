@@ -46,7 +46,7 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen && formData.category_id && formData.purchase_date) {
+    if (isOpen && formData.category_id) {
       generateBarcode();
     }
   }, [formData.category_id, formData.purchase_date, formData.quantity, formData.serial_numbers, isOpen]);
@@ -68,11 +68,10 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
       const category = categories.find(c => c.id === parseInt(formData.category_id));
       const categoryName = category ? category.name : 'Misc';
-      const purchaseDate = formData.purchase_date || new Date().toISOString().split('T')[0];
 
       // Format: XX-CCYY-NNNNN (with optional -SSSS for multiples)
       const typeCode = getCategoryCode(categoryName);
-      const year = purchaseDate ? purchaseDate.split('-')[0].slice(-2) : new Date().getFullYear().toString().slice(-2);
+      const year = formData.purchase_date ? formData.purchase_date.split('-')[0].slice(-2) : '00';
 
       if (formData.quantity === 1) {
         // Single item - show preview with count 00
@@ -503,14 +502,14 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
               {/* Purchase Date */}
               <div className="form-group">
-                <label className="form-label">Purchase Date</label>
+                <label className="form-label">Purchase Date (Optional)</label>
                 <input
                   type="date"
                   className="form-control"
                   value={formData.purchase_date}
                   onChange={(e) => handleChange('purchase_date', e.target.value)}
                 />
-                <small className="text-gray-500">Affects barcode generation</small>
+                <small className="text-gray-500">Optional - Leave blank for unknown date (uses '00' in barcode)</small>
               </div>
 
               {/* Purchase Price */}

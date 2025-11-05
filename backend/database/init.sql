@@ -45,6 +45,7 @@ CREATE TABLE equipment (
     qr_code VARCHAR(100),
     included_in_kit BOOLEAN DEFAULT 0,
     kit_contents TEXT,
+    needs_relabeling BOOLEAN DEFAULT 0,
     is_active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
                 e.category_id, c.name as category_name, c.color as category_color,
                 e.condition, e.location, e.purchase_date, e.purchase_price, e.current_value,
                 e.image_path, e.qr_code, e.description, e.notes,
-                e.status as equipment_status,
+                e.status as equipment_status, e.needs_relabeling,
                 CASE
                     WHEN t.equipment_id IS NULL THEN e.status
                     WHEN t.transaction_type = 'checkout' AND t.actual_return_date IS NULL THEN 'checked_out'
@@ -407,7 +407,7 @@ router.put('/:id', requireAdminOrManager, [
         const allowedFields = [
             'name', 'serial_number', 'barcode', 'model', 'manufacturer', 'category_id',
             'purchase_date', 'purchase_price', 'current_value', 'condition',
-            'location', 'description', 'notes', 'status', 'included_in_kit', 'kit_contents'
+            'location', 'description', 'notes', 'status', 'included_in_kit', 'kit_contents', 'needs_relabeling'
         ];
 
         const changes = {};
@@ -424,6 +424,61 @@ router.put('/:id', requireAdminOrManager, [
                         to: req.body[field]
                     };
                 }
+            }
+        }
+
+        // Check if barcode-affecting fields changed (category_id or purchase_date)
+        // Regenerate barcode and compare - if different, update barcode and set relabeling flag
+        const categoryChanged = req.body.hasOwnProperty('category_id') &&
+            req.body.category_id !== originalEquipment.category_id;
+        const purchaseDateChanged = req.body.hasOwnProperty('purchase_date') &&
+            req.body.purchase_date !== originalEquipment.purchase_date;
+
+        if ((categoryChanged || purchaseDateChanged) && !req.body.hasOwnProperty('needs_relabeling')) {
+            console.log('[Equipment Update] Barcode-affecting fields changed - regenerating barcode');
+
+            // Get category name for barcode generation
+            const categoryId = req.body.category_id || originalEquipment.category_id;
+            let categoryName = null;
+            if (categoryId) {
+                const category = await database.get('SELECT name FROM categories WHERE id = ?', [categoryId]);
+                categoryName = category ? category.name : null;
+            }
+
+            // Regenerate barcode with new values
+            const newBarcode = await generateBarcode(
+                categoryName,
+                req.body.purchase_date || originalEquipment.purchase_date,
+                1, // Single item (multiples handled at creation only)
+                originalEquipment.serial_number,
+                1  // Total quantity
+            );
+
+            console.log(`[Equipment Update] Old barcode: ${originalEquipment.barcode}, New barcode: ${newBarcode}`);
+
+            // If barcode changed, update it and set relabeling flag
+            if (newBarcode !== originalEquipment.barcode) {
+                console.log('[Equipment Update] Barcode changed - setting relabeling flag');
+
+                // Update barcode field
+                updateFields.push('barcode = ?');
+                updateValues.push(newBarcode);
+
+                // Set relabeling flag
+                updateFields.push('needs_relabeling = ?');
+                updateValues.push(1);
+
+                // Track changes in activity log
+                changes.barcode = {
+                    from: originalEquipment.barcode,
+                    to: newBarcode
+                };
+                changes.needs_relabeling = {
+                    from: originalEquipment.needs_relabeling || false,
+                    to: true
+                };
+            } else {
+                console.log('[Equipment Update] Barcode unchanged - no relabeling needed');
             }
         }
 

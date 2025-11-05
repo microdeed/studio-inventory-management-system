@@ -41,6 +41,7 @@ interface Equipment {
   image_path?: string;
   qr_code: string;
   included_in_kit?: boolean;
+  needs_relabeling?: boolean;
 }
 
 interface Category {
@@ -379,6 +380,42 @@ export const Equipment: React.FC = () => {
     }
   };
 
+  const handleMarkRelabeled = async () => {
+    if (!editedEquipment) return;
+
+    try {
+      // Get current user ID for authentication
+      const session = sessionManager.getSession();
+      if (!session) {
+        alert('Session expired. Please reload the page.');
+        return;
+      }
+
+      const response = await fetch(`/api/equipment/${editedEquipment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          needs_relabeling: 0,
+          updated_by: session.userId
+        })
+      });
+
+      if (response.ok) {
+        // Update local state
+        setEditedEquipment({ ...editedEquipment, needs_relabeling: false });
+        // Refresh equipment list
+        fetchEquipment();
+        alert('✓ Marked as relabeled');
+      } else {
+        const error = await response.json();
+        alert(`Failed to update:\n\n${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to mark as relabeled:', error);
+      alert('Network error. Please try again.');
+    }
+  };
+
   const handleFieldChange = (field: keyof Equipment, value: any) => {
     console.log('[Equipment Edit] handleFieldChange:', field, '=', value);
     if (editedEquipment) {
@@ -602,7 +639,14 @@ export const Equipment: React.FC = () => {
                       <td>
                         <div>
                           <div className="font-mono text-sm">{item.serial_number || 'N/A'}</div>
-                          <div className="text-xs text-gray-500 font-mono">{item.barcode || 'No barcode'}</div>
+                          <div className="text-xs text-gray-500 font-mono">
+                            {item.barcode || 'No barcode'}
+                            {item.needs_relabeling && (
+                              <span className="ml-2 text-xs text-orange-600 font-medium">
+                                ⚠️ Needs Relabel
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td>
@@ -795,6 +839,27 @@ export const Equipment: React.FC = () => {
                     />
                     <small className="text-gray-500">Auto-generated, cannot be changed</small>
                   </div>
+
+                  {/* Relabeling Warning */}
+                  {editedEquipment.needs_relabeling && (
+                    <div className="col-span-2 p-3 bg-orange-50 border border-orange-200 rounded">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <strong className="text-orange-900">⚠️ Relabeling Required</strong>
+                          <p className="text-sm text-orange-700 mt-1">
+                            Category or purchase date changed. This item needs a new barcode label printed.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleMarkRelabeled}
+                          className="btn btn-sm btn-secondary"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Model */}
                   <div className="form-group">
