@@ -1,6 +1,6 @@
 {
   "name": "studio-inventory-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Backend API for studio equipment inventory management",
   "main": "server.js",
   "scripts": {
@@ -23,7 +23,12 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["inventory", "equipment", "studio", "management"],
+  "keywords": [
+    "inventory",
+    "equipment",
+    "studio",
+    "management"
+  ],
   "author": "",
   "license": "MIT"
 }
