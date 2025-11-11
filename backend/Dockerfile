@@ -7,14 +7,17 @@ RUN apk add --no-cache dumb-init
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy version.json from root
+COPY version.json ./
+
+# Copy backend package files
+COPY backend/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy application code
-COPY . .
+# Copy backend application code
+COPY backend/ .
 
 # Create necessary directories with proper permissions
 # database/ = schema/migrations (in image), data/ = database file (in volume)

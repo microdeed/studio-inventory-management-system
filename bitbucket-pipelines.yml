@@ -25,34 +25,43 @@ pipelines:
           services:
             - docker
           script:
+            # Read version from version.json
+            - export APP_VERSION=$(cat version.json | grep -o '"version": *"[^"]*"' | grep -o '[0-9.]*')
+            - echo "Application version: ${APP_VERSION}"
+
             # Login to Docker registry (using Bitbucket or Docker Hub)
             - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
 
-            # Build images
+            # Build images with version tag
             - echo "Building backend image..."
-            - docker build -t ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-backend:latest ./backend
+            - docker build -f ./backend/Dockerfile -t ${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION} -t ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-backend:latest .
 
             - echo "Building frontend image..."
-            - docker build -t ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-frontend:latest ./frontend
+            - docker build -f ./frontend/Dockerfile --build-arg REACT_APP_VERSION=${APP_VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-frontend:latest .
 
             # Tag with registry prefix
+            - docker tag ${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}
             - docker tag ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}
             - docker tag ${IMAGE_NAME:-inventory-app}-backend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
+            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}
             - docker tag ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}
             - docker tag ${IMAGE_NAME:-inventory-app}-frontend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
 
             # Push images
             - echo "Pushing backend image..."
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
 
             - echo "Pushing frontend image..."
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
 
             - echo "Images pushed successfully!"
-            - echo "Backend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}"
-            - echo "Frontend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}"
+            - echo "Version: v${APP_VERSION}"
+            - echo "Backend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}"
+            - echo "Frontend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}"
 
     develop:
       - step:
@@ -60,9 +69,11 @@ pipelines:
           services:
             - docker
           script:
+            - export APP_VERSION=$(cat version.json | grep -o '"version": *"[^"]*"' | grep -o '[0-9.]*')
+            - echo "Development version: ${APP_VERSION}-dev"
             - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
-            - docker build -t ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} ./backend
-            - docker build -t ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} ./frontend
+            - docker build -f ./backend/Dockerfile -t ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} .
+            - docker build -f ./frontend/Dockerfile --build-arg REACT_APP_VERSION=${APP_VERSION}-dev -t ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} .
             - docker tag ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT}
             - docker tag ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT}
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT}
@@ -77,9 +88,14 @@ pipelines:
           script:
             - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
             - export VERSION=${BITBUCKET_TAG#v}
-            - docker build -t ${IMAGE_NAME:-inventory-app}-backend:${VERSION} ./backend
-            - docker build -t ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} ./frontend
+            - echo "Release version: ${VERSION}"
+            - docker build -f ./backend/Dockerfile -t ${IMAGE_NAME:-inventory-app}-backend:${VERSION} -t ${IMAGE_NAME:-inventory-app}-backend:latest .
+            - docker build -f ./frontend/Dockerfile --build-arg REACT_APP_VERSION=${VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:latest .
             - docker tag ${IMAGE_NAME:-inventory-app}-backend:${VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}
+            - docker tag ${IMAGE_NAME:-inventory-app}-backend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
             - docker tag ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}
+            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
             - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}
+            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest

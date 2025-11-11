@@ -561,6 +561,217 @@ From the root `inventory/` directory:
 - `npm run build` - Build frontend for production
 - `npm start` - Start backend in production mode
 
+## Version Management
+
+This project includes an automated version management system that maintains a single source of truth for versioning across all components.
+
+### Overview
+
+The version management system provides:
+- **Single Source of Truth**: `version.json` at the root manages the version
+- **Auto-sync**: Automatically syncs version to all three `package.json` files
+- **Environment Injection**: Version available to both frontend (API) and backend (process.env)
+- **Version API**: `/api/version` endpoint serves version info to the UI
+- **Dynamic Display**: UI components fetch and display version dynamically
+- **Release Notes**: Database-backed release notes with UI page at `/release-notes`
+- **NPM Scripts**: Convenient commands to bump versions
+- **Git Integration**: Automatic commits and tagging
+- **Docker Integration**: Version-based Docker image tags
+- **CHANGELOG.md**: Standard changelog format with all versions
+
+### Version Structure
+
+```
+version.json (Single Source of Truth)
+    ↓
+├─ package.json (root)
+├─ backend/package.json
+└─ frontend/package.json
+    ↓
+Docker Images: inventory-app-backend:v1.0.1
+               inventory-app-frontend:v1.0.1
+```
+
+### Version Commands
+
+#### Using NPM Scripts
+
+```bash
+# Show current version
+npm run version:current
+
+# Sync version to all package.json files
+npm run version:sync
+
+# Bump patch version (1.0.0 → 1.0.1) - bug fixes
+npm run version:patch
+
+# Bump minor version (1.0.0 → 1.1.0) - new features
+npm run version:minor
+
+# Bump major version (1.0.0 → 2.0.0) - breaking changes
+npm run version:major
+```
+
+#### Using Make Commands
+
+```bash
+# Show current version
+make version-current
+
+# Sync version to all package.json files
+make version-sync
+
+# Bump patch version (1.0.0 → 1.0.1)
+make version-patch
+
+# Bump minor version (1.0.0 → 1.1.0)
+make version-minor
+
+# Bump major version (1.0.0 → 2.0.0)
+make version-major
+```
+
+### Version Bump Workflow
+
+When you run a version bump command (patch/minor/major), the system will:
+
+1. **Calculate New Version**: Increment the version according to semantic versioning
+2. **Prompt for Release Notes**: Interactive CLI prompts you to enter release notes
+   - Type your changes (supports multi-line)
+   - Press Enter twice when done
+3. **Update version.json**: Update the single source of truth
+4. **Sync package.json Files**: Update all three package.json files automatically
+5. **Update CHANGELOG.md**: Add release notes to the changelog
+6. **Update Docker Tags**: Update `IMAGE_TAG` in `docker-compose.prod.yml`
+7. **Git Commit**: Create a commit with message `"chore: bump version to vX.Y.Z"`
+8. **Git Tag**: Create an annotated tag `vX.Y.Z`
+
+### Release Notes
+
+Release notes are stored in two places:
+- **CHANGELOG.md**: Standard changelog file (Git-tracked)
+- **Database**: `release_notes` table (accessible via API)
+
+#### Viewing Release Notes
+
+- **Web UI**: Navigate to `/release-notes` page in the application
+- **API**: `GET /api/version/release-notes`
+- **File**: View `CHANGELOG.md` in the repository
+
+#### Managing Release Notes via API
+
+```bash
+# Get all release notes
+GET /api/version/release-notes?page=1&limit=20
+
+# Get specific version release notes
+GET /api/version/release-notes/1.0.1
+
+# Create release notes (admin only)
+POST /api/version/release-notes
+{
+  "version": "1.0.1",
+  "notes": "Bug fixes and improvements",
+  "release_date": "2025-01-05",
+  "created_by": 1
+}
+```
+
+### Database Migration
+
+To enable release notes in the database, run the migration:
+
+```bash
+cd backend
+node database/migrations/run_migration.js add_release_notes_table.sql
+```
+
+Or connect to the database directly:
+```bash
+sqlite3 backend/database/inventory.db < backend/database/migrations/add_release_notes_table.sql
+```
+
+### CI/CD Integration
+
+The Bitbucket Pipelines configuration automatically:
+- Reads version from `version.json`
+- Tags Docker images with semantic version: `v1.0.1`
+- Pushes images with multiple tags:
+  - `v1.0.1` (semantic version)
+  - `latest` (latest stable)
+  - `<commit-hash>` (commit reference)
+
+#### Manual Docker Build with Version
+
+```bash
+# Read version from version.json
+export VERSION=$(node -p "require('./version.json').version")
+
+# Build backend with version
+docker build -f ./backend/Dockerfile -t inventory-backend:v${VERSION} .
+
+# Build frontend with version
+docker build -f ./frontend/Dockerfile \
+  --build-arg REACT_APP_VERSION=${VERSION} \
+  -t inventory-frontend:v${VERSION} .
+```
+
+### Version Display
+
+The application version is displayed in:
+- **UI Footer**: Sidebar footer shows "Studio Inventory v1.0.1"
+- **Health Endpoint**: `GET /api/health` returns `{ version: "1.0.1", ... }`
+- **Version Endpoint**: `GET /api/version` returns full version info
+- **Release Notes Page**: `/release-notes` route displays all versions
+
+### Best Practices
+
+1. **Semantic Versioning**: Follow SemVer principles:
+   - **Patch** (1.0.X): Bug fixes, security patches
+   - **Minor** (1.X.0): New features (backward-compatible)
+   - **Major** (X.0.0): Breaking changes
+
+2. **Release Notes**: Write clear, concise release notes:
+   - Focus on user-facing changes
+   - Group by type: Added, Fixed, Changed, Removed
+   - Use bullet points for readability
+
+3. **Git Workflow**:
+   - Bump version on main/master branch
+   - Push commits and tags together: `git push && git push --tags`
+   - Tags trigger production builds in CI/CD
+
+4. **Docker Tags**: The system creates multiple tags:
+   - Use semantic version tags (`v1.0.1`) for production deployments
+   - Use `latest` for quick testing
+   - Use commit hashes for rollback scenarios
+
+### Troubleshooting
+
+#### Version Out of Sync
+
+If package.json files are out of sync:
+```bash
+npm run version:sync
+```
+
+#### Forgot to Add Release Notes
+
+Edit CHANGELOG.md manually, then optionally add to database:
+```bash
+POST /api/version/release-notes
+```
+
+#### Need to Update Existing Release Notes
+
+```bash
+PUT /api/version/release-notes/:id
+{
+  "notes": "Updated release notes"
+}
+```
+
 ## Deployment
 
 ### Production Setup

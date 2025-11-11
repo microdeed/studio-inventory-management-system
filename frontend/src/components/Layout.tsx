@@ -14,6 +14,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { sessionManager } from '../utils/sessionManager.ts';
+import { useVersion } from '../hooks/useVersion.ts';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -27,6 +28,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     role: string;
   } | null>(null);
   const location = useLocation();
+  const { versionInfo } = useVersion();
 
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
@@ -34,7 +36,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/checkinout', icon: RefreshCw, label: 'Check In/Out' },
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/reports', icon: BarChart3, label: 'Reports' },
-    { path: '/settings', icon: Settings, label: 'Settings' }
+    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/release-notes', icon: FileText, label: 'Release Notes' }
   ];
 
   useEffect(() => {
@@ -155,7 +158,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           )}
 
           <div className="p-4 text-xs opacity-50 border-t border-white border-opacity-10">
-            Studio Inventory v1.0.0
+            Studio Inventory v{versionInfo?.version || '1.0.0'}
           </div>
         </div>
       </nav>

@@ -8,6 +8,7 @@ import { CheckInOut } from './pages/CheckInOut.tsx';
 import { Users } from './pages/Users.tsx';
 import { Reports } from './pages/Reports.tsx';
 import { Settings } from './pages/Settings.tsx';
+import { ReleaseNotes } from './pages/ReleaseNotes.tsx';
 import { InactivityWarningModal } from './components/InactivityWarningModal.tsx';
 import { useActivityTracker } from './hooks/useActivityTracker.ts';
 import { useInactivityWarning } from './hooks/useInactivityWarning.ts';
@@ -32,6 +33,7 @@ function App() {
               <Route path="/users" element={<Users />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/release-notes" element={<ReleaseNotes />} />
             </Routes>
           </Layout>
         </div>

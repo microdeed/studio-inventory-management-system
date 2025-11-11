@@ -1,4 +1,4 @@
-.PHONY: help build up down start stop restart logs logs-backend logs-frontend ps clean backup restore health
+.PHONY: help build up down start stop restart logs logs-backend logs-frontend ps clean backup restore health version-sync version-current version-patch version-minor version-major
 
 # Default target
 help:
@@ -27,6 +27,13 @@ help:
 	@echo "  health         - Check application health"
 	@echo "  prod-up        - Deploy in production mode"
 	@echo "  prod-down      - Stop production deployment"
+	@echo ""
+	@echo "Version Management:"
+	@echo "  version-current - Show current version"
+	@echo "  version-sync    - Sync version to all package.json files"
+	@echo "  version-patch   - Bump patch version (1.0.0 → 1.0.1)"
+	@echo "  version-minor   - Bump minor version (1.0.0 → 1.1.0)"
+	@echo "  version-major   - Bump major version (1.0.0 → 2.0.0)"
 	@echo ""
 
 # Initial setup
@@ -156,3 +163,19 @@ stats:
 test-connection:
 	@echo "Testing backend health from frontend container..."
 	@docker-compose exec frontend wget -O- http://backend:5000/api/health
+
+# Version management
+version-current:
+	@node -p "require('./version.json').version"
+
+version-sync:
+	@npm run version:sync
+
+version-patch:
+	@npm run version:patch
+
+version-minor:
+	@npm run version:minor
+
+version-major:
+	@npm run version:major

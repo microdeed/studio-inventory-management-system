@@ -2,17 +2,21 @@
 # Build stage
 FROM node:18-alpine AS builder
 
+# Accept version as build argument
+ARG REACT_APP_VERSION=1.0.0
+ENV REACT_APP_VERSION=$REACT_APP_VERSION
+
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy frontend package files
+COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm ci && npm cache clean --force
 
-# Copy source code
-COPY . .
+# Copy frontend source code
+COPY frontend/ .
 
 # Build the application
 RUN npm run build

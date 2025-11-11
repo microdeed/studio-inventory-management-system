@@ -3,10 +3,22 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const dotenv = require('dotenv');
+const fs = require('fs');
 const database = require('./database/connection');
 
 // Load environment variables
 dotenv.config();
+
+// Load application version
+try {
+    const versionPath = path.join(__dirname, '..', 'version.json');
+    const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+    process.env.APP_VERSION = versionData.version;
+    console.log(`Application version: ${process.env.APP_VERSION}`);
+} catch (error) {
+    console.warn('Warning: Could not load version.json, using default version 1.0.0');
+    process.env.APP_VERSION = '1.0.0';
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +58,7 @@ const upload = multer({
 
 // Initialize utilities
 const { ensureLogDir } = require('./utils/activityLogger');
+const { syncChangelogToDatabase } = require('./utils/syncChangelog');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -56,6 +69,7 @@ const categoryRoutes = require('./routes/categories');
 const maintenanceRoutes = require('./routes/maintenance');
 const reportRoutes = require('./routes/reports');
 const importRoutes = require('./routes/import');
+const versionRoutes = require('./routes/version');
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -66,12 +80,14 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/import', importRoutes);
+app.use('/api/version', versionRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         message: 'Studio Inventory API is running',
+        version: process.env.APP_VERSION || '1.0.0',
         timestamp: new Date().toISOString()
     });
 });
@@ -109,6 +125,9 @@ async function startServer() {
         // Ensure log directory exists
         await ensureLogDir();
         console.log('Activity logging initialized');
+
+        // Sync CHANGELOG.md to release_notes database
+        await syncChangelogToDatabase(database);
 
         // Start listening
         app.listen(PORT, () => {

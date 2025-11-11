@@ -136,14 +136,12 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
               className="form-control text-center text-2xl tracking-widest"
               value={pin}
               onChange={handlePinChange}
-              placeholder="••••••"
+              placeholder=""
               maxLength={6}
               autoFocus
               disabled={loading}
             />
-            <small className="text-gray-500 block text-center mt-1">
-              4-6 digit PIN
-            </small>
+            
           </div>
 
           {/* Error Message */}

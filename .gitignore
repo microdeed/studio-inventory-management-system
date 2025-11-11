@@ -41,3 +41,4 @@ TEST*.xml
 backend/database/migrations/
 backups/
 .claude/
+CLAUDE.MD
