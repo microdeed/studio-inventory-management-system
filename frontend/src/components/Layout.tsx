@@ -36,8 +36,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/checkinout', icon: RefreshCw, label: 'Check In/Out' },
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/reports', icon: BarChart3, label: 'Reports' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
-    { path: '/release-notes', icon: FileText, label: 'Release Notes' }
+    { path: '/settings', icon: Settings, label: 'Settings' }
+    // { path: '/release-notes', icon: FileText, label: 'Release Notes' }
   ];
 
   useEffect(() => {
@@ -157,8 +157,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           )}
 
-          <div className="p-4 text-xs opacity-50 border-t border-white border-opacity-10">
-            Studio Inventory v{versionInfo?.version || '1.0.0'}
+          <div className="p-4 text-xs border-t border-white border-opacity-10">
+            <div className="opacity-50">Studio Inventory v{versionInfo?.version || '1.0.0'}</div>
+            <Link
+              to="/release-notes"
+              className="block mt-1 opacity-50 hover:opacity-100 hover:underline transition-opacity"
+              style={{ color: 'inherit', textDecoration: 'none' }}
+            >
+              Release Notes (latest)
+            </Link>
           </div>
         </div>
       </nav>

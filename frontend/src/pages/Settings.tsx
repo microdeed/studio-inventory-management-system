@@ -287,6 +287,11 @@ export const Settings: React.FC = () => {
               <div>
                 <h3 className="font-medium text-gray-900 mb-2">Application</h3>
                 <p className="text-sm text-gray-600">Studio Inventory v1.0.0</p>
+                <a  href="/release-notes"
+                              className="block mt-1 opacity-50 hover:opacity-100 hover:underline transition-opacity"
+                              style={{ color: 'inherit', textDecoration: 'none' }}>
+                              Release Notes (latest)
+                            </a>
               </div>
               <div>
                 <h3 className="font-medium text-gray-900 mb-2">Database</h3>
