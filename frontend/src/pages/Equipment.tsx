@@ -534,7 +534,10 @@ export const Equipment: React.FC = () => {
                 className="form-control with-left-icon"
                 placeholder="Search by name, serial, model, or manufacturer..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             </div>
@@ -542,10 +545,13 @@ export const Equipment: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label">Category</label>
-            <select 
+            <select
               className="form-control"
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option value="">All Categories</option>
               {categories.map(category => (
@@ -561,7 +567,10 @@ export const Equipment: React.FC = () => {
             <select
               className="form-control"
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option value="">All Status</option>
               <option value="available">Available</option>

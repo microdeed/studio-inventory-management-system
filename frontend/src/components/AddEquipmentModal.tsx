@@ -99,12 +99,22 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
     const codes: { [key: string]: string } = {
       'camera': 'CA', 'cameras': 'CA',
       'lens': 'LN', 'lenses': 'LN',
-      'audio': 'MI', 'microphone': 'MI',
-      'lighting': 'LG', 'light': 'LG',
-      'video': 'CA',
+      'microphone': 'MI', 'microphones': 'MI',
+      'audio': 'MI',
+      'lighting': 'LG', 'light': 'LG', 'lights': 'LG',
+      'misc': 'MS', 'miscellaneous': 'MS',
+      'grip': 'GR',
+      'stand': 'SD', 'stands': 'SD',
+      'strobe': 'SB', 'strobes': 'SB',
+      'modifier': 'MD', 'modifiers': 'MD',
+      'drone': 'DN', 'drones': 'DN',
+      'battery': 'BY', 'batteries': 'BY',
+      'remote': 'RT', 'remotes': 'RT',
+      'video light': 'VL', 'video lights': 'VL',
+      'storage': 'SR',
+      'accessories': 'MS',
       'computing': 'MS',
       'cables': 'MS',
-      'accessories': 'MS',
       'furniture': 'MS'
     };
 
