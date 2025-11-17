@@ -70,6 +70,7 @@ const maintenanceRoutes = require('./routes/maintenance');
 const reportRoutes = require('./routes/reports');
 const importRoutes = require('./routes/import');
 const versionRoutes = require('./routes/version');
+const printRoutes = require('./routes/print');
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -81,6 +82,7 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/version', versionRoutes);
+app.use('/api/print', printRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

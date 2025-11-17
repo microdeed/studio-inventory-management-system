@@ -43,3 +43,4 @@ backups/
 .claude/
 CLAUDE.MD
 .db
+print.example.js

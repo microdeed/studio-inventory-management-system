@@ -6,6 +6,7 @@ const path = require('path');
 const database = require('../database/connection');
 const { logActivity, getRequestInfo } = require('../utils/activityLogger');
 const { generateBarcode } = require('../utils/barcodeGenerator');
+const { generateQRCode } = require('../utils/qrCodeGenerator');
 const router = express.Router();
 
 // Configure multer for file uploads
@@ -174,9 +175,6 @@ router.post('/equipment', upload.single('csvFile'), async (req, res) => {
                     }
                 }
 
-                // Use provided QR code or generate new one
-                const qr_code = equipmentData.qr_code || `EQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
                 // Generate barcode if not provided in CSV
                 let barcode = equipmentData.barcode;
                 if (!barcode || barcode.trim() === '') {
@@ -196,7 +194,7 @@ router.post('/equipment', upload.single('csvFile'), async (req, res) => {
                 // Log what we're about to insert
                 console.log(`[CSV Import] Inserting equipment "${equipmentData.name}" with category_id: ${category_id}, status: ${equipmentData.status}`);
 
-                // Insert equipment with all fields
+                // Insert equipment first (QR code will be generated after insert if not provided)
                 const result = await database.run(`
                     INSERT INTO equipment (
                         name, serial_number, barcode, model, manufacturer, category_id,
@@ -220,10 +218,23 @@ router.post('/equipment', upload.single('csvFile'), async (req, res) => {
                     equipmentData.description,
                     equipmentData.notes,
                     equipmentData.image_path,
-                    qr_code,
+                    equipmentData.qr_code || null,  // Use CSV QR code if provided, otherwise null
                     equipmentData.included_in_kit ? 1 : 0,
                     equipmentData.kit_contents
                 ]);
+
+                // Generate QR code if not provided in CSV
+                let qr_code = equipmentData.qr_code;
+                if (!qr_code) {
+                    qr_code = generateQRCode(result.id);
+                    await database.run(
+                        'UPDATE equipment SET qr_code = ? WHERE id = ?',
+                        [qr_code, result.id]
+                    );
+                    console.log(`[CSV Import] Generated QR code: ${qr_code} for ID: ${result.id}`);
+                } else {
+                    console.log(`[CSV Import] Using CSV-provided QR code: ${qr_code} for ID: ${result.id}`);
+                }
 
                 results.push({
                     line: row.lineNumber,

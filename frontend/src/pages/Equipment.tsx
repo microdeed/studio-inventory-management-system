@@ -10,10 +10,12 @@ import {
   CheckCircle,
   Wrench,
   QrCode,
-  Lock
+  Lock,
+  Printer
 } from 'lucide-react';
 import { formatInCentral } from '../utils/dateUtils.ts';
 import { AddEquipmentModal } from '../components/AddEquipmentModal.tsx';
+import { PrintLabelModal } from '../components/PrintLabelModal.tsx';
 import { sessionManager } from '../utils/sessionManager.ts';
 
 interface Equipment {
@@ -118,6 +120,8 @@ export const Equipment: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [equipmentToPrint, setEquipmentToPrint] = useState<Equipment | null>(null);
 
   // Access control rules for equipment operations
   const canAddEquipment = currentUserRole === 'admin' || currentUserRole === 'manager';
@@ -650,7 +654,7 @@ export const Equipment: React.FC = () => {
                           <div className="font-mono text-sm">{item.serial_number || 'N/A'}</div>
                           <div className="text-xs text-gray-500 font-mono">
                             {item.barcode || 'No barcode'}
-                            {item.needs_relabeling && (
+                            {!!item.needs_relabeling && (
                               <span className="ml-2 text-xs text-orange-600 font-medium">
                                 ⚠️ Needs Relabel
                               </span>
@@ -717,12 +721,15 @@ export const Equipment: React.FC = () => {
                           >
                             View
                           </button>
-                          <button 
-                            className="btn btn-sm btn-secondary" 
-                            title="Generate QR Code"
-                            onClick={() => handleGenerateQR(item)}
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            title="Print Label"
+                            onClick={() => {
+                              setEquipmentToPrint(item);
+                              setShowPrintModal(true);
+                            }}
                           >
-                            <QrCode size={14} />
+                            <Printer size={14} />
                           </button>
                         </div>
                       </td>
@@ -850,7 +857,7 @@ export const Equipment: React.FC = () => {
                   </div>
 
                   {/* Relabeling Warning */}
-                  {editedEquipment.needs_relabeling && (
+                  {!!editedEquipment.needs_relabeling && (
                     <div className="col-span-2 p-3 bg-orange-50 border border-orange-200 rounded">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -1205,6 +1212,16 @@ export const Equipment: React.FC = () => {
           alert('✓ Equipment created successfully!');
         }}
         categories={categories}
+      />
+
+      {/* Print Label Modal */}
+      <PrintLabelModal
+        isOpen={showPrintModal}
+        onClose={() => {
+          setShowPrintModal(false);
+          setEquipmentToPrint(null);
+        }}
+        equipment={equipmentToPrint}
       />
 
       {/* Delete Confirmation Modal */}

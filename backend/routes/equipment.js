@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const database = require('../database/connection');
 const QRCode = require('qrcode');
 const { generateBarcode } = require('../utils/barcodeGenerator');
+const { generateQRCode, generateQRImage } = require('../utils/qrCodeGenerator');
 const { logActivity, getRequestInfo } = require('../utils/activityLogger');
 const router = express.Router();
 
@@ -291,10 +292,7 @@ router.post('/', requireAdminOrManager, [
                 );
             }
 
-            // Generate QR code
-            const qr_code = `EQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            console.log(`[Equipment Create] Item ${count}/${itemCount} - QR: ${qr_code}, Barcode: ${generatedBarcode}, Serial: ${itemSerialNumber || 'N/A'}`);
-
+            // Insert equipment first (without QR code)
             const result = await database.run(`
                 INSERT INTO equipment (
                     name, serial_number, barcode, model, manufacturer, category_id,
@@ -304,8 +302,18 @@ router.post('/', requireAdminOrManager, [
             `, [
                 name, itemSerialNumber, generatedBarcode, model, manufacturer, category_id,
                 purchase_date, purchase_price, current_value, condition || 'normal',
-                location, description, notes, qr_code, 'available', included_in_kit || false, kit_contents
+                location, description, notes, null, 'available', included_in_kit || false, kit_contents
             ]);
+
+            // Generate QR code using the equipment ID
+            const qr_code = generateQRCode(result.id);
+            console.log(`[Equipment Create] Item ${count}/${itemCount} - ID: ${result.id}, QR: ${qr_code}, Barcode: ${generatedBarcode}, Serial: ${itemSerialNumber || 'N/A'}`);
+
+            // Update equipment with QR code
+            await database.run(
+                'UPDATE equipment SET qr_code = ? WHERE id = ?',
+                [qr_code, result.id]
+            );
 
             const newEquipment = await database.get(
                 'SELECT * FROM equipment WHERE id = ?',
@@ -585,8 +593,8 @@ router.get('/:id/qrcode', async (req, res) => {
             return res.status(404).json({ error: 'Equipment not found' });
         }
 
-        const qrCodeDataUrl = await QRCode.toDataURL(equipment.qr_code);
-        
+        const qrCodeDataUrl = await generateQRImage(equipment.qr_code);
+
         res.json({
             qr_code: equipment.qr_code,
             qr_image: qrCodeDataUrl,

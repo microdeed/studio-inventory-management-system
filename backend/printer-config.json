@@ -1,0 +1,11 @@
+{
+  "printerName": "EPSON LW-PX700",
+  "description": "Configure your Epson LABELWORKS printer name here",
+  "instructions": [
+    "1. Open Control Panel > Devices and Printers",
+    "2. Find your Epson LABELWORKS printer",
+    "3. Copy the exact printer name",
+    "4. Update the 'printerName' field above with that exact name"
+  ],
+  "note": "The printer name must match exactly as shown in Windows"
+}

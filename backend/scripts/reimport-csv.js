@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
+const { generateQRCode } = require('../utils/qrCodeGenerator');
 
 const dbPath = path.join(__dirname, '../database/inventory.db');
 const csvPath = path.join(__dirname, '../../data/Equipment Inventory (Incomplete).csv');
@@ -119,8 +120,7 @@ db.run('DELETE FROM equipment', (err) => {
         });
 
     function insertEquipment(data, category_id, line) {
-        const qr_code = `EQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
+        // Insert equipment first without QR code
         db.run(`
             INSERT INTO equipment (
                 name, serial_number, barcode, manufacturer, model, category_id,
@@ -135,12 +135,28 @@ db.run('DELETE FROM equipment', (err) => {
             category_id,
             data.condition,
             data.notes,
-            qr_code
+            null  // QR code will be generated after insert
         ], function(err) {
             if (err) {
                 errors.push(`Line ${line}: ${err.message}`);
             } else {
-                results.push({ line, id: this.lastID, name: data.name });
+                const equipmentId = this.lastID;
+
+                // Generate QR code using the equipment ID
+                const qr_code = generateQRCode(equipmentId);
+
+                // Update equipment with QR code
+                db.run(
+                    'UPDATE equipment SET qr_code = ? WHERE id = ?',
+                    [qr_code, equipmentId],
+                    (updateErr) => {
+                        if (updateErr) {
+                            console.error(`Failed to update QR code for ID ${equipmentId}:`, updateErr);
+                        }
+                    }
+                );
+
+                results.push({ line, id: equipmentId, name: data.name });
             }
         });
     }

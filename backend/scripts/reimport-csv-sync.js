@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
+const { generateQRCode } = require('../utils/qrCodeGenerator');
 
 const dbPath = path.join(__dirname, '../database/inventory.db');
 const csvPath = path.join(__dirname, '../../data/Equipment Inventory (Incomplete).csv');
@@ -106,10 +107,8 @@ async function reimport() {
                     }
                 }
 
-                // Insert equipment
-                const qr_code = `EQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-                await dbRun(`
+                // Insert equipment first without QR code
+                const result = await dbRun(`
                     INSERT INTO equipment (
                         name, serial_number, barcode, category_id,
                         condition, notes, qr_code
@@ -121,8 +120,17 @@ async function reimport() {
                     category_id,
                     equipmentData.condition,
                     equipmentData.notes,
-                    qr_code
+                    null  // QR code will be generated after insert
                 ]);
+
+                // Generate QR code using the equipment ID
+                const qr_code = generateQRCode(result.lastID);
+
+                // Update equipment with QR code
+                await dbRun(
+                    'UPDATE equipment SET qr_code = ? WHERE id = ?',
+                    [qr_code, result.lastID]
+                );
 
                 imported++;
                 if (imported <= 5) {
