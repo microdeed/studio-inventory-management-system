@@ -120,6 +120,17 @@ CREATE TABLE activity_log (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Release notes table
+CREATE TABLE release_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version VARCHAR(20) NOT NULL UNIQUE,
+    notes TEXT NOT NULL,
+    release_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Insert default categories
 INSERT INTO categories (name, description, color) VALUES
 ('Strobe', 'Strobe equipment', '#F38181'),
@@ -157,3 +168,5 @@ CREATE INDEX idx_transactions_purpose ON transactions(purpose);
 CREATE INDEX idx_activity_log_user ON activity_log(user_id);
 CREATE INDEX idx_activity_log_entity ON activity_log(entity_type, entity_id);
 CREATE INDEX idx_activity_log_created ON activity_log(created_at);
+CREATE INDEX idx_release_notes_version ON release_notes(version);
+CREATE INDEX idx_release_notes_date ON release_notes(release_date DESC);
