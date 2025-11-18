@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+## [1.1.1] - 2025-11-18
+
+## [1.1.1] - 2025-11-18
+# Patch Notes v1.1.1
+**Release Date:** November 18, 2025  
+**Purpose:** Preparation for Phase 3 implementation, focusing on QR code enhancements, settings improvements, printing functionality, and bug fixes to ensure smoother development progression. This patch builds on Version 2.0, addressing inconsistencies and adding foundational elements for upcoming features like advanced QR handling and reporting.
+## New Features and Improvements
+- **QR Code Refactoring for Reusability**:
+  - Introduced a dedicated utility module (`backend/utils/qrGenerator.js`) for QR code generation, allowing it to be called from multiple routes and pages (e.g., equipment creation, import, and printing workflows).
+  - This replaces inline QR generation in `import.js` and equipment routes, promoting code modularity and easier maintenance in Phase 3.
+- **QR Code String Optimization**:
+  - Updated QR code string generation in `backend/routes/import.js` and `backend/routes/equipment.js` to use a shortened format based on stripped barcode values (e.g., removing prefixes or unnecessary characters for compactness).
+  - Ensures QR codes are more efficient for scanning and storage without losing essential data.
+- **Settings Page Enhancements**:
+  - Synchronized the version display on the Settings page (`frontend/src/pages/Settings.tsx`) to match the system-wide version (now dynamically pulled from `package.json` or a central config file).
+  - Added additional system information to the Settings page, including:
+    - Current database version and last migration date.
+    - Active user count and role breakdown.
+    - System uptime and last backup timestamp.
+    - Environment details (e.g., NODE_ENV, port configurations).
+  - These additions provide better administrative oversight and debugging tools.
+- **Printing Functionality Skeleton**:
+  - Added a basic print skeleton utility (`frontend/src/utils/printUtils.ts`) for generating printable views of equipment lists, barcodes, and QR codes.
+  - Introduced a new Print UI component (`frontend/src/components/PrintModal.tsx`) accessible from the Equipment and Settings pages.
+    - Supports selecting items for print (e.g., individual equipment or batches).
+    - Includes options for barcode/QR inclusion, layout (e.g., labels or full sheets), and preview mode.
+    - Integrated with browser print dialog for PDF export compatibility.
+  - This lays the groundwork for Phase 3 expansions like custom label printing and report exports.
+## Bug Fixes
+- **Barcode Synchronization Issue**:
+  - Resolved discrepancy between frontend barcode display/generation (`frontend/src/components/AddEquipmentModal.tsx` and Equipment page) and backend abbreviations (`backend/utils/barcodeGenerator.js`).
+  - Frontend now fetches and displays barcodes using the exact backend-generated format, ensuring consistency across the system (e.g., aligning type codes like "CA" for Camera).
+- **Search Pagination Bug**:
+  - Fixed issue in Equipment page search functionality (`frontend/src/pages/Equipment.tsx`) where results were not displaying correctly when not on the first page of the registry.
+  - Updated pagination logic to reset to page 1 on new searches and properly apply filters across all pages, preventing "no results" errors on subsequent pages.
+
+
 ## [1.1.0] - 2025-11-11
 
 Version 1.1.0

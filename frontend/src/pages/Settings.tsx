@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, Upload, Download, Database, CheckCircle, XCircle, AlertCircle, Undo } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, Upload, Download, Database, CheckCircle, XCircle, AlertCircle, Undo, Activity, Calendar, Code } from 'lucide-react';
+import { useVersion } from '../hooks/useVersion.ts';
 
 interface ImportResult {
   imported: number;
@@ -8,7 +9,17 @@ interface ImportResult {
   equipmentIds: number[];
 }
 
+interface HealthStatus {
+  status: string;
+  message: string;
+  version: string;
+  timestamp: string;
+}
+
 export const Settings: React.FC = () => {
+  const { versionInfo, loading: versionLoading } = useVersion();
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [undoing, setUndoing] = useState(false);
@@ -24,6 +35,24 @@ export const Settings: React.FC = () => {
     }
     return null;
   });
+
+  // Fetch health status
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        setHealthStatus(data);
+      } catch (error) {
+        console.error('Failed to fetch health status:', error);
+        setHealthStatus(null);
+      } finally {
+        setHealthLoading(false);
+      }
+    };
+
+    fetchHealth();
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -279,23 +308,91 @@ export const Settings: React.FC = () => {
         {/* System Information */}
         <div className="ledger-card">
           <div className="ledger-card-header">
-            <h2 className="ledger-card-title">System Information</h2>
+            <h2 className="ledger-card-title">
+              <Code size={20} />
+              System Information
+            </h2>
           </div>
-          
+
           <div className="ledger-card-content p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Application Version */}
               <div>
-                <h3 className="font-medium text-gray-900 mb-2">Application</h3>
-                <p className="text-sm text-gray-600">Studio Inventory v1.0.0</p>
-                <a  href="/release-notes"
-                              className="block mt-1 opacity-50 hover:opacity-100 hover:underline transition-opacity"
-                              style={{ color: 'inherit', textDecoration: 'none' }}>
-                              Release Notes (latest)
-                            </a>
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <Database size={16} className="text-blue-600" />
+                  Application
+                </h3>
+                {versionLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="loading-spinner w-3 h-3"></div>
+                    Loading version...
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600 font-medium">
+                      Studio Inventory v{versionInfo?.version || '1.0.0'}
+                    </p>
+                    {versionInfo?.lastUpdated && (
+                      <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <Calendar size={12} />
+                        Updated: {new Date(versionInfo.lastUpdated).toLocaleDateString()}
+                      </p>
+                    )}
+                    <a
+                      href="/release-notes"
+                      className="block mt-2 text-sm text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                    >
+                      View Release Notes →
+                    </a>
+                  </>
+                )}
               </div>
+
+              {/* Backend Status */}
               <div>
-                <h3 className="font-medium text-gray-900 mb-2">Database</h3>
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <Activity size={16} className="text-green-600" />
+                  Backend Status
+                </h3>
+                {healthLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="loading-spinner w-3 h-3"></div>
+                    Checking status...
+                  </div>
+                ) : healthStatus ? (
+                  <>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <p className="text-sm text-gray-600 font-medium">{healthStatus.status}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">{healthStatus.message}</p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <p className="text-sm text-red-600">Unable to connect</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Database */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <Database size={16} className="text-purple-600" />
+                  Database
+                </h3>
                 <p className="text-sm text-gray-600">SQLite</p>
+                <p className="text-xs text-gray-500 mt-1">Local file-based database</p>
+              </div>
+
+              {/* Frontend Framework */}
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <Code size={16} className="text-cyan-600" />
+                  Frontend
+                </h3>
+                <p className="text-sm text-gray-600">React 18.2.0</p>
+                <p className="text-xs text-gray-500 mt-1">TypeScript 4.8.4</p>
               </div>
             </div>
           </div>
