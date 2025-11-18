@@ -9,6 +9,7 @@ const path = require('path');
 const { promisify } = require('util');
 const { exec } = require('child_process');
 const execAsync = promisify(exec);
+const { getPrintersByPlatform, printFile, getPlatform } = require('../utils/printerUtils.js');
 
 const router = express.Router();
 
@@ -90,12 +91,12 @@ const requireAdminOrManager = async (req, res, next) => {
   }
 };
 
-// Get available printers
+// Get available printers (platform-aware)
 async function getAvailablePrinters() {
   try {
-    const { stdout } = await execAsync('powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"');
-    const printers = JSON.parse(stdout);
-    return Array.isArray(printers) ? printers.map(p => p.Name) : [printers.Name];
+    const printers = await getPrintersByPlatform();
+    console.log(`Found ${printers.length} printer(s) on ${getPlatform()}`);
+    return printers;
   } catch (err) {
     console.error('Error getting printers:', err);
     return [];
@@ -401,14 +402,14 @@ router.post('/direct/:id', requireAdminOrManager, async (req, res) => {
     fs.writeFileSync(tempPath, labelBuffer);
 
     try {
-      // Print the file using PowerShell
-      const escapedPath = tempPath.replace(/\\/g, '\\\\');
-      const escapedPrinter = printerConfig.printerName.replace(/"/g, '`"');
-      const command = `powershell -Command "Start-Process -FilePath '${tempPath}' -Verb Print -ArgumentList '/d:${escapedPrinter}'"`;
+      // Print the file using platform-aware utility
+      const printResult = await printFile(tempPath, printerConfig.printerName);
 
-      await execAsync(command);
+      if (!printResult.success) {
+        throw new Error(printResult.message);
+      }
 
-      console.log('PNG sent to printer:', { id, printer: printerConfig.printerName });
+      console.log('PNG sent to printer:', { id, printer: printerConfig.printerName, platform: getPlatform() });
 
       // Delete temp file after printing
       setTimeout(() => {
@@ -486,14 +487,14 @@ router.post('/pdf-direct/:id', requireAdminOrManager, async (req, res) => {
     fs.writeFileSync(tempPath, pdfBuffer);
 
     try {
-      // Send PDF directly to printer
-      const options = {
-        printer: printerConfig.printerName
-      };
+      // Send PDF directly to printer using platform-aware utility
+      const printResult = await printFile(tempPath, printerConfig.printerName);
 
-      await ptp.print(tempPath, options);
+      if (!printResult.success) {
+        throw new Error(printResult.message);
+      }
 
-      console.log('PDF sent to printer:', { id, printer: printerConfig.printerName });
+      console.log('PDF sent to printer:', { id, printer: printerConfig.printerName, platform: getPlatform() });
 
       // Delete temp file after printing
       setTimeout(() => {
