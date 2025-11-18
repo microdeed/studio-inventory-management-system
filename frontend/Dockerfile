@@ -1,9 +1,14 @@
-# Frontend Dockerfile - Multi-stage build for React app
-# Build stage
-FROM node:18-alpine AS builder
+# Frontend Dockerfile - Multi-stage build for React app (Multi-arch: amd64, arm64, arm/v7)
+# Build stage - Use native platform for faster builds since output is platform-independent
+FROM --platform=$BUILDPLATFORM node:18-alpine AS builder
 
-# Accept version as build argument
+# Build arguments for multi-platform support
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 ARG REACT_APP_VERSION=1.0.0
+
+RUN echo "Building for ${TARGETPLATFORM:-unknown} on ${BUILDPLATFORM:-unknown}"
+
 ENV REACT_APP_VERSION=$REACT_APP_VERSION
 
 # Set working directory
@@ -21,8 +26,12 @@ COPY frontend/ .
 # Build the application
 RUN npm run build
 
-# Production stage
+# Production stage - Uses target platform for nginx
 FROM nginx:alpine
+
+# Build arguments for platform awareness
+ARG TARGETPLATFORM
+RUN echo "Production image for ${TARGETPLATFORM:-unknown}"
 
 # Copy custom nginx configuration
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf

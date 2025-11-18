@@ -21,7 +21,7 @@ pipelines:
   branches:
     main:
       - step:
-          name: Build, Tag and Push to Registry
+          name: Build, Tag and Push Multi-Arch to Registry
           services:
             - docker
           script:
@@ -32,70 +32,130 @@ pipelines:
             # Login to Docker registry (using Bitbucket or Docker Hub)
             - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
 
-            # Build images with version tag
-            - echo "Building backend image..."
-            - docker build -f ./backend/Dockerfile -t ${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION} -t ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-backend:latest .
+            # Setup Docker Buildx for multi-platform builds
+            - echo "Setting up Docker Buildx..."
+            - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+            - docker buildx create --name multiarch --driver docker-container --use
+            - docker buildx inspect --bootstrap
 
-            - echo "Building frontend image..."
-            - docker build -f ./frontend/Dockerfile --build-arg REACT_APP_VERSION=${APP_VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} -t ${IMAGE_NAME:-inventory-app}-frontend:latest .
+            # Build and push multi-arch backend image
+            - echo "Building multi-arch backend image for amd64, arm64, and arm/v7..."
+            - |
+              docker buildx build \
+                --platform linux/amd64,linux/arm64,linux/arm/v7 \
+                --file ./backend/Dockerfile \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}-amd64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}-arm64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}-arm \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest \
+                --push \
+                .
 
-            # Tag with registry prefix
-            - docker tag ${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}
-            - docker tag ${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}
-            - docker tag ${IMAGE_NAME:-inventory-app}-backend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
-            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}
-            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}
-            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
+            # Build and push multi-arch frontend image
+            - echo "Building multi-arch frontend image for amd64, arm64, and arm/v7..."
+            - |
+              docker buildx build \
+                --platform linux/amd64,linux/arm64,linux/arm/v7 \
+                --file ./frontend/Dockerfile \
+                --build-arg REACT_APP_VERSION=${APP_VERSION} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}-amd64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}-arm64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}-arm \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest \
+                --push \
+                .
 
-            # Push images
-            - echo "Pushing backend image..."
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${BITBUCKET_COMMIT}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
-
-            - echo "Pushing frontend image..."
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${BITBUCKET_COMMIT}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
-
-            - echo "Images pushed successfully!"
+            - echo "Multi-arch images pushed successfully!"
             - echo "Version: v${APP_VERSION}"
+            - echo "Platforms: linux/amd64, linux/arm64, linux/arm/v7"
             - echo "Backend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:v${APP_VERSION}"
             - echo "Frontend: ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:v${APP_VERSION}"
+            - echo "Architecture-specific tags also available: v${APP_VERSION}-amd64, v${APP_VERSION}-arm64, v${APP_VERSION}-arm"
 
     develop:
       - step:
-          name: Build Development Images
+          name: Build Multi-Arch Development Images
           services:
             - docker
           script:
             - export APP_VERSION=$(cat version.json | grep -o '"version": *"[^"]*"' | grep -o '[0-9.]*')
             - echo "Development version: ${APP_VERSION}-dev"
             - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
-            - docker build -f ./backend/Dockerfile -t ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} .
-            - docker build -f ./frontend/Dockerfile --build-arg REACT_APP_VERSION=${APP_VERSION}-dev -t ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} .
-            - docker tag ${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT}
-            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT}
+
+            # Setup Docker Buildx for multi-platform builds
+            - echo "Setting up Docker Buildx..."
+            - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+            - docker buildx create --name multiarch --driver docker-container --use
+            - docker buildx inspect --bootstrap
+
+            # Build and push multi-arch backend dev image
+            - |
+              docker buildx build \
+                --platform linux/amd64,linux/arm64,linux/arm/v7 \
+                --file ./backend/Dockerfile \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:dev-${BITBUCKET_COMMIT} \
+                --push \
+                .
+
+            # Build and push multi-arch frontend dev image
+            - |
+              docker buildx build \
+                --platform linux/amd64,linux/arm64,linux/arm/v7 \
+                --file ./frontend/Dockerfile \
+                --build-arg REACT_APP_VERSION=${APP_VERSION}-dev \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:dev-${BITBUCKET_COMMIT} \
+                --push \
+                .
 
   tags:
     'v*':
       - step:
-          name: Build and Push Release
+          name: Build and Push Multi-Arch Release
           services:
             - docker
           script:
             - echo ${DOCKER_PASSWORD} | docker login --username "${DOCKER_USERNAME}" --password-stdin ${DOCKER_REGISTRY:-docker.io}
             - export VERSION=${BITBUCKET_TAG#v}
             - echo "Release version: ${VERSION}"
-            - docker build -f ./backend/Dockerfile -t ${IMAGE_NAME:-inventory-app}-backend:${VERSION} -t ${IMAGE_NAME:-inventory-app}-backend:latest .
-            - docker build -f ./frontend/Dockerfile --build-arg REACT_APP_VERSION=${VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} -t ${IMAGE_NAME:-inventory-app}-frontend:latest .
-            - docker tag ${IMAGE_NAME:-inventory-app}-backend:${VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}
-            - docker tag ${IMAGE_NAME:-inventory-app}-backend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
-            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:${VERSION} ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}
-            - docker tag ${IMAGE_NAME:-inventory-app}-frontend:latest ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}
-            - docker push ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest
+
+            # Setup Docker Buildx for multi-platform builds
+            - echo "Setting up Docker Buildx..."
+            - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+            - docker buildx create --name multiarch --driver docker-container --use
+            - docker buildx inspect --bootstrap
+
+            # Build and push multi-arch backend release
+            - |
+              docker buildx build \
+                --platform linux/amd64,linux/arm64,linux/arm/v7 \
+                --file ./backend/Dockerfile \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}-amd64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}-arm64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:${VERSION}-arm \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-backend:latest \
+                --push \
+                .
+
+            # Build and push multi-arch frontend release
+            - |
+              docker buildx build \
+                --platform linux/amd64,linux/arm64,linux/arm/v7 \
+                --file ./frontend/Dockerfile \
+                --build-arg REACT_APP_VERSION=${VERSION} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION} \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}-amd64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}-arm64 \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:${VERSION}-arm \
+                --tag ${DOCKER_REGISTRY:-docker.io}/${DOCKER_USERNAME}/${IMAGE_NAME:-inventory-app}-frontend:latest \
+                --push \
+                .
+
+            - echo "Multi-arch release images pushed successfully!"
+            - echo "Version: ${VERSION}"
+            - echo "Platforms: linux/amd64, linux/arm64, linux/arm/v7"
+            - echo "Architecture-specific tags: ${VERSION}-amd64, ${VERSION}-arm64, ${VERSION}-arm"

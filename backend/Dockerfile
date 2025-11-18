@@ -1,5 +1,10 @@
-# Backend Dockerfile - Node.js API
+# Backend Dockerfile - Node.js API (Multi-arch: amd64, arm64, arm/v7)
 FROM node:18-alpine
+
+# Build arguments for multi-platform support
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+RUN echo "Building for ${TARGETPLATFORM:-unknown} on ${BUILDPLATFORM:-unknown}"
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
