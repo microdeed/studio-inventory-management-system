@@ -101,8 +101,18 @@ export const PrintLabelModal: React.FC<PrintLabelModalProps> = ({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Print operation failed');
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType?.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Print operation failed');
+          } else {
+            const text = await response.text();
+            throw new Error(text || `Request failed: ${response.status}`);
+          }
+        } catch (parseError) {
+          throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+        }
       }
 
       // For preview actions (png/pdf), open in new tab

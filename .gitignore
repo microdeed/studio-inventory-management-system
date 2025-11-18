@@ -43,4 +43,4 @@ backups/
 .claude/
 CLAUDE.MD
 print.example.js
-inventory.db
+inventory.db.backup
