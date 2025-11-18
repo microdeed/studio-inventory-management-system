@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.1] - 2025-11-18
 
-## [1.1.1] - 2025-11-18
 # Patch Notes v1.1.1
 **Release Date:** November 18, 2025  
 **Purpose:** Preparation for Phase 3 implementation, focusing on QR code enhancements, settings improvements, printing functionality, and bug fixes to ensure smoother development progression. This patch builds on Version 2.0, addressing inconsistencies and adding foundational elements for upcoming features like advanced QR handling and reporting.
