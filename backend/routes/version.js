@@ -8,7 +8,7 @@ const router = express.Router();
 // Load version from version.json
 function getVersionFromFile() {
     try {
-        const versionPath = path.join(__dirname, '..', '..', 'version.json');
+        const versionPath = path.join(__dirname, '..', 'version.json');
         const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
         return versionData;
     } catch (error) {

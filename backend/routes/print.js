@@ -1,9 +1,8 @@
 const express = require('express');
 const database = require('../database/connection');
 const QRCode = require('qrcode');
-const { createCanvas } = require('canvas');
+const Jimp = require('jimp');
 const PDFDocument = require('pdfkit');
-const ptp = require('pdf-to-printer');
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
@@ -111,15 +110,20 @@ async function generateCompositeLabel(barcodeText, qrcodeData, useHalfSize = fal
     // Adjust sizes based on half-size option
     const qrSize = useHalfSize ? 50 : 100;
     const padding = useHalfSize ? 4 : 8;
-    const fontSize = 14;
 
-    // Create temporary canvas for QR code
-    const qrCanvas = createCanvas(qrSize, qrSize);
-    await QRCode.toCanvas(qrCanvas, qrcodeData, {
+    // Generate QR code as PNG buffer
+    const qrBuffer = await QRCode.toBuffer(qrcodeData, {
       errorCorrectionLevel: 'M',
       width: qrSize,
-      margin: 1
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
     });
+
+    // Load QR code into Jimp
+    const qrImage = await Jimp.read(qrBuffer);
 
     let canvasWidth, canvasHeight;
 
@@ -127,58 +131,56 @@ async function generateCompositeLabel(barcodeText, qrcodeData, useHalfSize = fal
       // Half size: QR only, no text
       canvasWidth = qrSize + (padding * 2);
       canvasHeight = qrSize + (padding * 2);
+
+      // Create white background
+      const image = await new Jimp(canvasWidth, canvasHeight, 0xFFFFFFFF);
+
+      // Composite QR code (centered)
+      const qrX = Math.floor((canvasWidth - qrSize) / 2);
+      image.composite(qrImage, qrX, padding);
+
+      return await image.getBufferAsync(Jimp.MIME_PNG);
     } else {
       // Full size: QR + text
-      // Calculate text dimensions
-      const tempCanvas = createCanvas(100, 100);
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.font = `bold ${fontSize}px Arial`;
-      const textMetrics = tempCtx.measureText(barcodeText);
-      const textWidth = textMetrics.width; // This will become the height when rotated
+      // Estimate text dimensions (roughly 7 pixels per character for 14px font)
+      const estimatedTextWidth = barcodeText.length * 7;
 
-      // Portrait layout: width matches 12mm (~141px), height accommodates QR + rotated text
+      // Portrait layout: width matches 12mm (~116px), height accommodates QR + rotated text
       canvasWidth = qrSize + (padding * 2);
-      canvasHeight = qrSize + textWidth + (padding * 3); // QR + rotated text + padding
+      canvasHeight = qrSize + estimatedTextWidth + (padding * 3);
+
+      // Create white background
+      const image = await new Jimp(canvasWidth, canvasHeight, 0xFFFFFFFF);
+
+      // Composite QR code at top (centered horizontally)
+      const qrX = Math.floor((canvasWidth - qrSize) / 2);
+      image.composite(qrImage, qrX, padding);
+
+      // Load font for text (using Jimp's built-in font)
+      const font = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+
+      // Position for text (below QR code)
+      const textY = qrSize + (padding * 2);
+      const textX = Math.floor(canvasWidth / 2);
+
+      // Print text vertically by rotating the entire image temporarily
+      // Create a temporary image for the text
+      const textHeight = estimatedTextWidth;
+      const textWidth = 20; // Height of the font
+      const textImage = await new Jimp(textHeight, textWidth, 0xFFFFFFFF);
+
+      // Print text horizontally on the temporary image
+      textImage.print(font, 0, 0, barcodeText);
+
+      // Rotate text image 90 degrees clockwise
+      textImage.rotate(-90);
+
+      // Composite rotated text onto main image
+      const textCompositeX = Math.floor((canvasWidth - textImage.bitmap.width) / 2);
+      image.composite(textImage, textCompositeX, textY);
+
+      return await image.getBufferAsync(Jimp.MIME_PNG);
     }
-
-    const canvas = createCanvas(canvasWidth, canvasHeight);
-    const ctx = canvas.getContext('2d');
-
-    // Fill background with white
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-    // Draw QR code at the top (centered horizontally)
-    const qrX = (canvasWidth - qrSize) / 2;
-    ctx.drawImage(qrCanvas, qrX, padding, qrSize, qrSize);
-
-    // Draw text only if full size
-    if (!useHalfSize) {
-      // Calculate text dimensions for full size
-      const tempCanvas = createCanvas(100, 100);
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.font = `bold ${fontSize}px Arial`;
-      const textMetrics = tempCtx.measureText(barcodeText);
-      const textWidth = textMetrics.width;
-
-      // Draw text below QR code, rotated 90 degrees clockwise
-      const textStartY = qrSize + padding * 2 + (textWidth / 2);
-      const textX = canvasWidth / 2;
-
-      ctx.save();
-      ctx.translate(textX, textStartY);
-      ctx.rotate(Math.PI / 2); // 90 degrees clockwise
-
-      ctx.fillStyle = 'black';
-      ctx.font = `bold ${fontSize}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(barcodeText, 0, 0);
-
-      ctx.restore();
-    }
-
-    return canvas.toBuffer('image/png');
   } catch (err) {
     throw new Error(`Label generation error: ${err.message}`);
   }
