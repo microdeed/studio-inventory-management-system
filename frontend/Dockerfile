@@ -9,6 +9,14 @@ ARG REACT_APP_VERSION=1.0.0
 
 RUN echo "Building for ${TARGETPLATFORM:-unknown} on ${BUILDPLATFORM:-unknown}"
 
+# Install build tools for native modules (webpack, fsevents, etc.)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    gcc \
+    libc-dev
+
 ENV REACT_APP_VERSION=$REACT_APP_VERSION
 
 # Set working directory
