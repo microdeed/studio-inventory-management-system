@@ -11,6 +11,10 @@ env:
   DOCKER_REGISTRY: ghcr.io
   IMAGE_NAME: inventory-app
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # Job 1: Build and Test (runs on all branches)
   build-test:
