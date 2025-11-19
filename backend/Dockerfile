@@ -10,6 +10,7 @@ RUN echo "Building for ${TARGETPLATFORM:-unknown} on ${BUILDPLATFORM:-unknown}"
 RUN apk add --no-cache \
     dumb-init \
     python3 \
+    py3-setuptools \
     make \
     g++ \
     gcc \
@@ -32,7 +33,7 @@ COPY backend/package*.json ./
 RUN npm ci --only=production --loglevel=verbose && npm cache clean --force
 
 # Remove build dependencies to reduce image size
-RUN apk del python3 make g++ gcc libc-dev
+RUN apk del python3 py3-setuptools make g++ gcc libc-dev
 
 # Copy backend application code
 COPY backend/ .
