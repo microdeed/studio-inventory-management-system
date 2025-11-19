@@ -8,8 +8,8 @@ on:
       - 'v*'
 
 env:
-  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY || 'docker.io' }}
-  IMAGE_NAME: ${{ secrets.IMAGE_NAME || 'inventory-app' }}
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: inventory-app
 
 jobs:
   # Job 1: Build and Test (runs on all branches)
@@ -71,12 +71,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend multi-arch image
         uses: docker/build-push-action@v5
@@ -86,12 +86,12 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}-arm
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:latest
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}-amd64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}-arm64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}-arm
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -105,12 +105,12 @@ jobs:
             REACT_APP_VERSION=${{ steps.version.outputs.version }}
           push: true
           tags: |
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}-arm
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:latest
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}-amd64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}-arm64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}-arm
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -119,8 +119,8 @@ jobs:
           echo "Multi-arch images pushed successfully!"
           echo "Version: v${{ steps.version.outputs.version }}"
           echo "Platforms: linux/amd64, linux/arm64, linux/arm/v7"
-          echo "Backend: ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}"
-          echo "Frontend: ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}"
+          echo "Backend: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:v${{ steps.version.outputs.version }}"
+          echo "Frontend: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:v${{ steps.version.outputs.version }}"
           echo "Architecture-specific tags also available: v${{ steps.version.outputs.version }}-amd64, v${{ steps.version.outputs.version }}-arm64, v${{ steps.version.outputs.version }}-arm"
 
   # Job 3: Build Development Images (develop branch)
@@ -148,12 +148,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend dev image
         uses: docker/build-push-action@v5
@@ -162,7 +162,7 @@ jobs:
           file: ./backend/Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:dev-${{ github.sha }}
+          tags: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:dev-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -175,7 +175,7 @@ jobs:
           build-args: |
             REACT_APP_VERSION=${{ steps.version.outputs.version }}-dev
           push: true
-          tags: ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:dev-${{ github.sha }}
+          tags: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:dev-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -204,12 +204,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Registry
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend release
         uses: docker/build-push-action@v5
@@ -219,11 +219,11 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}-arm
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-backend:latest
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}-amd64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}-arm64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}-arm
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -237,11 +237,11 @@ jobs:
             REACT_APP_VERSION=${{ steps.version.outputs.version }}
           push: true
           tags: |
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}-amd64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}-arm64
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}-arm
-            ${{ env.DOCKER_REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}-frontend:latest
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}-amd64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}-arm64
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}-arm
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
