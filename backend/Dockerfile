@@ -6,8 +6,14 @@ ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 RUN echo "Building for ${TARGETPLATFORM:-unknown} on ${BUILDPLATFORM:-unknown}"
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init for proper signal handling and build tools for native modules
+RUN apk add --no-cache \
+    dumb-init \
+    python3 \
+    make \
+    g++ \
+    gcc \
+    libc-dev
 
 # Set working directory
 WORKDIR /app
@@ -20,6 +26,9 @@ COPY backend/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
+
+# Remove build dependencies to reduce image size
+RUN apk del python3 make g++ gcc libc-dev
 
 # Copy backend application code
 COPY backend/ .
