@@ -13,7 +13,11 @@ RUN apk add --no-cache \
     make \
     g++ \
     gcc \
-    libc-dev
+    libc-dev \
+    ca-certificates
+
+# Create Python symlink for node-gyp compatibility
+RUN ln -sf /usr/bin/python3 /usr/bin/python
 
 # Set working directory
 WORKDIR /app
@@ -24,8 +28,8 @@ COPY version.json ./
 # Copy backend package files
 COPY backend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies with verbose logging for debugging
+RUN npm ci --only=production --loglevel=verbose && npm cache clean --force
 
 # Remove build dependencies to reduce image size
 RUN apk del python3 make g++ gcc libc-dev
