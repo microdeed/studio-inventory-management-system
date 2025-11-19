@@ -7,7 +7,8 @@ docker-compose.override.yml
 
 # Docker volumes and data (should not be committed)
 volumes/
-data/
+data/*.csv
+!data/Import-csv-template.csv
 
 # Node modules
 node_modules/
@@ -38,9 +39,14 @@ nul
 TEST*.xml
 
 # Backend specific
-backend/database/migrations/
+backend/database/*.db
+backend/database/*.db-*
 backups/
+*.tar
+*.tar.gz
+
+# Temporary scripts
+*_temp.js
+query_*.js
 .claude/
 CLAUDE.MD
-print.example.js
-inventory.db.backup

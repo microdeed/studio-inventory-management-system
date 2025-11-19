@@ -25,35 +25,54 @@ Multi-Container Setup
 
 ## Quick Start
 
-### 1. Clone and Configure
+### Production Deployment (First Time)
 
 ```bash
-# Navigate to project directory
+# 1. Clone the repository
+git clone <repository-url>
 cd inventory
 
-# Copy environment file and configure
+# 2. Create environment configuration (optional)
 cp .env.example .env
-# Edit .env with your settings
+# Edit .env if you need custom JWT_SECRET or ports
+
+# 3. Build and start containers
+docker compose up -d
+
+# Database automatically initializes with:
+# - Default admin user (username: admin, email: admin@studio.com)
+# - Equipment categories
+# - All necessary tables from backend/database/init.sql
 ```
 
-### 2. Build and Start
+### Local Development
+
+For local development with an existing database:
 
 ```bash
-# Build and start all containers
-docker-compose up -d
+# Create docker-compose.override.yml (not committed to repo)
+# This bind-mounts your local database directory
+docker compose up -d
+```
 
+The override file allows you to work with your local `backend/database/` directory instead of Docker volumes.
+
+### Access Application
+
+- Frontend: http://localhost (or your FRONTEND_PORT)
+- Backend API: http://backend:5000 (internal only)
+- Backend API (via proxy): http://localhost/api
+- Health Check: http://localhost/api/health
+
+### View Logs and Status
+
+```bash
 # View logs
 docker-compose logs -f
 
 # Check container status
 docker-compose ps
 ```
-
-### 3. Access Application
-
-- Frontend: http://localhost
-- Backend API: http://backend:5000 (internal only)
-- Health Check: http://localhost/api/health
 
 ## Environment Configuration
 
@@ -139,22 +158,45 @@ Docker volumes ensure data persists across container restarts:
 
 ### Backup Volumes
 
+#### Quick Backup (Direct Database Copy)
+
 ```bash
-# Backup database
+# Backup database directly from container
+docker compose exec backend cp /app/data/inventory.db /app/data/inventory.backup.db
+docker cp inventory-backend:/app/data/inventory.backup.db ./backup-$(date +%Y%m%d).db
+```
+
+#### Volume Backup (Full Volume)
+
+```bash
+# Backup entire database volume
 docker run --rm -v inventory-db-data:/data -v $(pwd):/backup \
   alpine tar czf /backup/db-backup-$(date +%Y%m%d).tar.gz /data
 
-# Backup uploads
+# Backup uploads volume
 docker run --rm -v inventory-upload-data:/data -v $(pwd):/backup \
   alpine tar czf /backup/uploads-backup-$(date +%Y%m%d).tar.gz /data
 ```
 
 ### Restore Volumes
 
+#### Quick Restore (Direct Database Copy)
+
 ```bash
-# Restore database
+# Restore database backup to container
+docker cp ./backup-20241013.db inventory-backend:/app/data/inventory.db
+docker compose restart backend
+```
+
+#### Volume Restore (Full Volume)
+
+```bash
+# Restore database volume from backup
 docker run --rm -v inventory-db-data:/data -v $(pwd):/backup \
   alpine sh -c "cd /data && tar xzf /backup/db-backup-YYYYMMDD.tar.gz --strip 1"
+
+# Restart services after restore
+docker compose restart
 ```
 
 ### Inspect Volumes

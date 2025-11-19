@@ -47,8 +47,10 @@ Purpose: Preparation for Phase 3 implementation, focusing on QR code enhancement
 
 ## [1.1.0] - 2025-11-11
 
+# Release v1.1.0
+
 Version 1.1.0
-Release Date: November 11, 2025
+Release Date: November 11, 2025 
 Focus: Polish existing features, improve data handling, and add basic security measures. This minor release refines core workflows, enhances import reliability, and introduces essential security enhancements to ensure smoother operations and better user control.
 
 ### New Features
