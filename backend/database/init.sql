@@ -58,6 +58,7 @@ CREATE TABLE transactions (
     equipment_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     transaction_type VARCHAR(20) NOT NULL, -- 'checkout', 'checkin', 'reservation', 'maintenance'
+    batch_id VARCHAR(50), -- Groups related transactions together (e.g., bulk checkout)
     checkout_date DATETIME,
     expected_return_date DATETIME,
     actual_return_date DATETIME,
@@ -165,6 +166,7 @@ CREATE INDEX idx_transactions_user ON transactions(user_id);
 CREATE INDEX idx_transactions_type ON transactions(transaction_type);
 CREATE INDEX idx_transactions_dates ON transactions(checkout_date, actual_return_date);
 CREATE INDEX idx_transactions_purpose ON transactions(purpose);
+CREATE INDEX idx_transactions_batch ON transactions(batch_id);
 CREATE INDEX idx_activity_log_user ON activity_log(user_id);
 CREATE INDEX idx_activity_log_entity ON activity_log(entity_type, entity_id);
 CREATE INDEX idx_activity_log_created ON activity_log(created_at);

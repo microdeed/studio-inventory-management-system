@@ -37,22 +37,36 @@ router.get('/dashboard', async (req, res) => {
             `),
             database.get(`
                 SELECT COUNT(*) as count FROM transactions t
-                WHERE t.transaction_type = 'checkout' 
-                AND t.actual_return_date IS NULL 
+                WHERE t.transaction_type = 'checkout'
+                AND t.actual_return_date IS NULL
                 AND t.expected_return_date < datetime('now')
             `),
             database.get('SELECT COUNT(*) as count FROM users WHERE is_active = 1'),
             database.get('SELECT COUNT(*) as count FROM categories'),
+            // Fetch from activity_log instead of transactions
             database.all(`
-                SELECT t.transaction_type, t.created_at, t.purpose,
-                       e.name as equipment_name, u.full_name as user_name
-                FROM transactions t
-                LEFT JOIN equipment e ON t.equipment_id = e.id
-                LEFT JOIN users u ON t.user_id = u.id
-                ORDER BY t.created_at DESC
-                LIMIT 10
+                SELECT
+                    al.id,
+                    al.action,
+                    al.entity_type,
+                    al.entity_id,
+                    al.changes_json,
+                    al.created_at,
+                    u.full_name as user_name,
+                    u.username
+                FROM activity_log al
+                LEFT JOIN users u ON al.user_id = u.id
+                WHERE al.action IN ('checkout', 'checkin', 'update', 'import', 'undo_import')
+                ORDER BY al.created_at DESC
+                LIMIT 20
             `)
         ]);
+
+        // Parse changes_json for recent activities
+        const parsedActivities = recentActivity.map(activity => ({
+            ...activity,
+            changes: activity.changes_json ? JSON.parse(activity.changes_json) : null
+        }));
 
         res.json({
             summary: {
@@ -64,7 +78,7 @@ router.get('/dashboard', async (req, res) => {
                 total_users: totalUsers.count,
                 total_categories: totalCategories.count
             },
-            recent_activity: recentActivity
+            recent_activity: parsedActivities
         });
     } catch (error) {
         console.error('Dashboard error:', error);

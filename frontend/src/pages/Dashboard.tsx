@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  Users, 
-  CheckCircle, 
-  Clock, 
+import {
+  Package,
+  Users,
+  CheckCircle,
+  Clock,
   AlertTriangle,
   Wrench,
   Activity,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Edit,
+  Upload,
+  Trash2
 } from 'lucide-react';
 import { formatInCentral } from '../utils/dateUtils.ts';
 
@@ -21,12 +27,35 @@ interface DashboardData {
     total_users: number;
     total_categories: number;
   };
-  recent_activity: {
-    transaction_type: string;
-    created_at: string;
+  recent_activity: ActivityLogEntry[];
+}
+
+interface ActivityLogEntry {
+  id: number;
+  action: string;
+  entity_type: string;
+  entity_id: number | null;
+  changes: any;
+  created_at: string;
+  user_name: string;
+  username: string;
+}
+
+interface BatchDetails {
+  batch_id: string;
+  transaction_type: string;
+  transaction_count: number;
+  user_name: string;
+  created_at: string;
+  purpose?: string;
+  transactions: {
+    id: number;
     equipment_name: string;
-    user_name: string;
-    purpose?: string;
+    serial_number: string;
+    barcode: string;
+    model: string;
+    manufacturer: string;
+    category_name: string;
   }[];
 }
 
@@ -62,6 +91,9 @@ export const Dashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [overdueEquipment, setOverdueEquipment] = useState<OverdueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedActivities, setExpandedActivities] = useState<Set<number>>(new Set());
+  const [batchDetails, setBatchDetails] = useState<Map<string, BatchDetails>>(new Map());
+  const [loadingBatches, setLoadingBatches] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchDashboardData();
@@ -88,6 +120,58 @@ export const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleActivityExpansion = async (activityId: number, batchId?: string) => {
+    const newExpanded = new Set(expandedActivities);
+
+    if (newExpanded.has(activityId)) {
+      newExpanded.delete(activityId);
+    } else {
+      newExpanded.add(activityId);
+
+      // Fetch batch details if not already loaded
+      if (batchId && !batchDetails.has(batchId)) {
+        await fetchBatchDetails(batchId);
+      }
+    }
+
+    setExpandedActivities(newExpanded);
+  };
+
+  const fetchBatchDetails = async (batchId: string) => {
+    if (loadingBatches.has(batchId)) return;
+
+    setLoadingBatches(prev => new Set(prev).add(batchId));
+
+    try {
+      const response = await fetch(`/api/activity/batch/${batchId}`);
+      const data = await response.json();
+      setBatchDetails(prev => new Map(prev).set(batchId, data));
+    } catch (error) {
+      console.error('Failed to fetch batch details:', error);
+    } finally {
+      setLoadingBatches(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(batchId);
+        return newSet;
+      });
+    }
+  };
+
+  // Format field names for display
+  const formatFieldName = (field: string): string => {
+    return field
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Format field value for display
+  const formatFieldValue = (value: any): string => {
+    if (value === null || value === undefined || value === '') return 'Empty';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    return String(value);
   };
 
   if (loading) {
@@ -154,31 +238,204 @@ export const Dashboard: React.FC = () => {
               Recent Activity
             </h2>
           </div>
-          
-          <div className="ledger-card-content">
-            {dashboardData?.recent_activity?.length ? (
-              <div className="divide-y">
-                {dashboardData.recent_activity.map((activity, index) => (
-                  <div key={index} className="p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {activity.equipment_name}
+
+          <div className="ledger-card-content p-0">
+            {dashboardData?.recent_activity && Array.isArray(dashboardData.recent_activity) && dashboardData.recent_activity.length > 0 ? (
+              <div className="divide-y max-h-[600px] overflow-y-auto">
+                {dashboardData.recent_activity.map((activity) => {
+                  const isExpanded = expandedActivities.has(activity.id);
+                  const batchId = activity.changes?.batch_id;
+                  const isTransaction = activity.action === 'checkout' || activity.action === 'checkin';
+                  const isUpdate = activity.action === 'update' && activity.entity_type === 'equipment';
+                  const isExpandable = isTransaction || isUpdate;
+                  const batchData = batchId ? batchDetails.get(batchId) : null;
+
+                  return (
+                    <div key={activity.id} className="p-4">
+                      <div
+                        className={`flex items-center justify-between ${isExpandable ? 'cursor-pointer hover:bg-gray-50 -m-4 p-4 rounded' : ''}`}
+                        onClick={() => isExpandable && toggleActivityExpansion(activity.id, batchId)}
+                      >
+                        <div className="flex-1">
+                          {/* Checkout/Checkin Activities */}
+                          {activity.action === 'checkout' && (
+                            <>
+                              <div className="flex items-center gap-2 font-medium text-gray-900">
+                                <Package size={16} className="text-green-600" />
+                                Checked out {activity.changes?.count || 1} item{(activity.changes?.count || 1) > 1 ? 's' : ''}
+                                {isTransaction && (
+                                  <span className="text-gray-400">
+                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 ml-6">
+                                by {activity.user_name}
+                                {activity.changes?.purpose && (
+                                  <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
+                                    {activity.changes.purpose.charAt(0).toUpperCase() + activity.changes.purpose.slice(1)}
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {activity.action === 'checkin' && (
+                            <>
+                              <div className="flex items-center gap-2 font-medium text-gray-900">
+                                <CheckCircle size={16} className="text-blue-600" />
+                                Checked in {activity.changes?.count || 1} item{(activity.changes?.count || 1) > 1 ? 's' : ''}
+                                {isTransaction && (
+                                  <span className="text-gray-400">
+                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 ml-6">
+                                by {activity.user_name}
+                              </div>
+                            </>
+                          )}
+
+                          {/* Equipment Update */}
+                          {activity.action === 'update' && activity.entity_type === 'equipment' && (
+                            <>
+                              <div className="flex items-center gap-2 font-medium text-gray-900">
+                                <Edit size={16} className="text-orange-600" />
+                                Equipment Updated
+                                {isUpdate && (
+                                  <span className="text-gray-400">
+                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 ml-6">
+                                by {activity.user_name || 'System'}
+                                {activity.changes && Object.keys(activity.changes).length > 0 && (
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    ({Object.keys(activity.changes).length} field{Object.keys(activity.changes).length > 1 ? 's' : ''} changed)
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {/* Import */}
+                          {activity.action === 'import' && (
+                            <>
+                              <div className="flex items-center gap-2 font-medium text-gray-900">
+                                <Upload size={16} className="text-purple-600" />
+                                Imported {activity.changes?.imported || 0} item{(activity.changes?.imported || 0) !== 1 ? 's' : ''}
+                              </div>
+                              <div className="text-sm text-gray-600 ml-6">
+                                {activity.changes?.filename || 'CSV file'}
+                                {activity.changes?.errors > 0 && (
+                                  <span className="ml-2 text-red-600">
+                                    ({activity.changes.errors} error{activity.changes.errors !== 1 ? 's' : ''})
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {/* Undo Import */}
+                          {activity.action === 'undo_import' && (
+                            <>
+                              <div className="flex items-center gap-2 font-medium text-gray-900">
+                                <Trash2 size={16} className="text-red-600" />
+                                Undid import ({activity.changes?.deleted || 0} item{(activity.changes?.deleted || 0) !== 1 ? 's' : ''} deleted)
+                              </div>
+                              <div className="text-sm text-gray-600 ml-6">
+                                by {activity.user_name || 'System'}
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-gray-500">
+                          {formatInCentral(activity.created_at, 'MMM d, HH:mm')}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {activity.transaction_type === 'checkout' ? 'Checked out by' : 'Checked in by'}{' '}
-                        {activity.user_name}
-                        {activity.purpose && (
-                          <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded">
-                            {activity.purpose.charAt(0).toUpperCase() + activity.purpose.slice(1)}
-                          </span>
-                        )}
-                      </div>
+
+                      {/* Expanded Details for Transactions */}
+                      {isExpanded && isTransaction && (
+                        <div className="mt-3 ml-6 pl-4 border-l-2 border-gray-200">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            Equipment Details:
+                          </div>
+                          <div className="space-y-2">
+                            {/* Show from batch details if available */}
+                            {batchData && batchData.transactions && Array.isArray(batchData.transactions) && batchData.transactions.length > 0 ? (
+                              batchData.transactions.map((item) => (
+                                <div key={item.id} className="text-sm text-gray-600 flex items-center gap-2">
+                                  <CheckCircle size={12} className="text-green-500" />
+                                  <span className="font-medium">{item.equipment_name}</span>
+                                  {item.category_name && (
+                                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                      {item.category_name}
+                                    </span>
+                                  )}
+                                  {item.barcode && (
+                                    <span className="text-xs text-gray-400 font-mono">
+                                      {item.barcode}
+                                    </span>
+                                  )}
+                                </div>
+                              ))
+                            ) : activity.changes?.equipment && Array.isArray(activity.changes.equipment) && activity.changes.equipment.length > 0 ? (
+                              /* Fallback: Show from activity.changes.equipment */
+                              activity.changes.equipment.map((item: any, index: number) => (
+                                <div key={index} className="text-sm text-gray-600 flex items-center gap-2">
+                                  <CheckCircle size={12} className="text-green-500" />
+                                  <span className="font-medium">{item.name}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-gray-500 italic">
+                                No equipment details available
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Expanded Details for Equipment Updates */}
+                      {isExpanded && isUpdate && activity.changes && Object.keys(activity.changes).length > 0 && (
+                        <div className="mt-3 ml-6 pl-4 border-l-2 border-orange-200">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            Changed Fields:
+                          </div>
+                          <div className="space-y-2">
+                            {Object.entries(activity.changes)
+                              .filter(([field, change]) => change && typeof change === 'object' && 'from' in change && 'to' in change)
+                              .map(([field, change]: [string, any]) => (
+                                <div key={field} className="text-sm">
+                                  <div className="font-medium text-gray-700 mb-1">
+                                    {formatFieldName(field)}:
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-4 text-gray-600">
+                                    <span className="px-2 py-1 bg-red-50 text-red-700 rounded border border-red-200">
+                                      {formatFieldValue(change.from)}
+                                    </span>
+                                    <span className="text-gray-400">→</span>
+                                    <span className="px-2 py-1 bg-green-50 text-green-700 rounded border border-green-200">
+                                      {formatFieldValue(change.to)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {isExpanded && loadingBatches.has(batchId!) && (
+                        <div className="mt-3 ml-6 text-sm text-gray-500">
+                          Loading details...
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {formatInCentral(activity.created_at, 'MMM d, HH:mm')}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-8 text-center text-gray-500">

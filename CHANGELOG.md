@@ -5,108 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
+---
 
 ## [1.1.1] - 2025-11-18
 
-# Patch Notes v1.1.1
-Release Date: November 18, 2025  
-Purpose: Preparation for Phase 3 implementation, focusing on QR code enhancements, settings improvements, printing functionality, and bug fixes to ensure smoother development progression.
+### Patch Notes v1.1.1  
+**Release Date:** November 18, 2025  
+**Purpose:** Preparation for Phase 3 implementation, focusing on QR code enhancements, settings improvements, printing functionality, and bug fixes to ensure smoother development progression.
 
-## New Features and Improvements
-### QR Code Refactoring for Reusability:
+### New Features and Improvements
 
-  - Introduced a dedicated utility module (`backend/utils/qrGenerator.js`) for QR code generation, allowing it to be called from multiple routes and pages
-  - This replaces inline QR generation in `import.js` and equipment routes, promoting code modularity and easier maintenance in Phase 3.
+#### QR Code Refactoring for Reusability
+- Introduced a dedicated utility module (`backend/utils/qrGenerator.js`) for QR code generation, allowing it to be used across multiple routes and pages.
+- Replaced inline QR generation in `import.js` and equipment routes, improving modularity and maintainability for Phase 3.
 
-### QR Code String Optimization:
+#### QR Code String Optimization
+- Updated QR code string generation in `backend/routes/import.js` and `backend/routes/equipment.js` to use a shortened format based on stripped barcode values.
+- Ensures more efficient scanning and storage without losing essential data.
 
-  - Updated QR code string generation in `backend/routes/import.js` and `backend/routes/equipment.js` to use a shortened format based on stripped barcode values
-  - Ensures QR codes are more efficient for scanning and storage without losing essential data.
+#### Settings Page Enhancements
+- Version display in `frontend/src/pages/Settings.tsx` now synchronizes with the system-wide version, pulled dynamically from `package.json` or a central config.
+- Added additional system information to the Settings page.
 
-### Settings Page Enhancements:
-
-  - Synchronized the version display on the Settings page (`frontend/src/pages/Settings.tsx`) to match the system-wide version (now dynamically pulled from `package.json` or a central config file).
-  - Added additional system information to the Settings page
-
-### Printing Functionality Skeleton:
-
-  - Added a basic print skeleton utility (`frontend/src/utils/printUtils.ts`) for generating printable views of equipment lists, barcodes, and QR codes.
-  - Introduced a new Print UI component (`frontend/src/components/PrintModal.tsx`) accessible from the Equipment and Settings pages.
-
-## Bug Fixes
-### Barcode Synchronization Issue:
-
-  - Resolved discrepancy between frontend barcode display/generation (`frontend/src/components/AddEquipmentModal.tsx` and Equipment page) and backend abbreviations (`backend/utils/barcodeGenerator.js`).
-
-### Search Pagination Bug:
-
-  - Fixed issue in Equipment page search functionality (`frontend/src/pages/Equipment.tsx`) where results were not displaying correctly when not on the first page of the registry.
-  - Updated pagination logic to reset to page 1 on new searches and properly apply filters across all pages, preventing "no results" errors on subsequent pages.
-
-
-## [1.1.0] - 2025-11-11
-
-# Release v1.1.0
-
-Version 1.1.0
-Release Date: November 11, 2025 
-Focus: Polish existing features, improve data handling, and add basic security measures. This minor release refines core workflows, enhances import reliability, and introduces essential security enhancements to ensure smoother operations and better user control.
-
-### New Features
-Self-User PIN Change: Users can now update their own PIN directly through the UI. (Integrated existing code for seamless mapping.)
-Checkout Purpose Field: Added a required "purpose" field to checkout transactions, enabling better tracking and auditability of equipment loans.
-Restricted Check-in/Out: Check-in/out operations are now limited to equipment checked out by the current user. Admins retain full unrestricted access for oversight.
-Auto-Barcode Generation on Edits/Imports: Barcode generation now automatically triggers during CSV imports or equipment edits if the barcode field is null or empty. Updated items are flagged for relabeling to maintain consistency.
-Handle Unknown Purchase Dates: Implemented a default "00" year/date format (e.g., "2000-01-01") for cases where purchase date is unknown or null, ensuring data integrity without errors.
-Session Timeout: Added automatic session expiration after 15 minutes of inactivity, with a 30-minute grace period for guaranteed access resumption.
-Timezone Configuration: Set the default timezone to Central Time (US/Central), with options for configuration in the settings page.
-
-### Improvements
-
-CSV Import Enhancements: Improved mapping for "Purchase Date" and "Condition" fields during imports, ensuring accurate translation to database and frontend representations. This resolves previous inconsistencies and supports bulk operations more reliably.
-
-### Security Enhancements
-
-Strengthened user authentication flows with the new PIN change and session timeout features.
-Role-based restrictions on check-in/out to prevent unauthorized actions.
-
-### Dependencies and Technical Changes
-
-Database Schema Updates: Added purpose field to the transactions table. Run the migration script (backend/database/migration_v3.sql) to apply changes.
-Versioning System: Introduced an automated version management system:
-Central version.json file as the single source of truth.
-Auto-sync to all package.json files (root, backend, frontend).
-New NPM scripts: npm run version:patch, npm run version:minor, npm run version:major for bumping versions.
-Added /api/version endpoint for runtime version info.
-Dynamic version display in the UI footer/dashboard.
-
+#### Printing Functionality Skeleton
+- Added a basic print utility (`frontend/src/utils/printUtils.ts`) for generating printable views of equipment lists, barcodes, and QR codes.
+- Introduced a new `PrintModal` component (`frontend/src/components/PrintModal.tsx`) accessible from the Equipment and Settings pages.
 
 ### Bug Fixes
 
-None reported in this release; focus was on proactive polishing.                                                                
+#### Barcode Synchronization Issue
+- Resolved discrepancies between frontend barcode display/generation (`AddEquipmentModal.tsx` and Equipment page) and backend abbreviations (`backend/utils/barcodeGenerator.js`).
 
+#### Search Pagination Bug
+- Fixed an issue in `frontend/src/pages/Equipment.tsx` where search results did not display correctly when not on the first page.
+- Pagination now resets to page 1 on new searches and applies filters properly across all pages.
+
+---
+
+## [1.1.0] - 2025-11-11
+
+### Release v1.1.0
+
+**Version:** 1.1.0  
+**Release Date:** November 11, 2025  
+**Focus:** Polish existing features, improve data handling, and add basic security measures.
+
+### New Features
+- **Self-User PIN Change:** Users can now update their own PIN through the UI.
+- **Checkout Purpose Field:** Added a required "purpose" field for checkout transactions to improve auditability.
+- **Restricted Check-in/Out:** Users can only check in/out equipment they personally checked out. Admins retain full access.
+- **Auto-Barcode Generation:** Now triggers automatically during CSV imports or edits if the barcode field is empty.
+- **Handle Unknown Purchase Dates:** Defaults to `"2000-01-01"` when the purchase date is null/unknown.
+- **Session Timeout:** Automatic expiration after 15 minutes of inactivity, with a 30-minute grace window.
+- **Timezone Configuration:** Default timezone set to US/Central, configurable in settings.
+
+### Improvements
+- **CSV Import Enhancements:** Better mapping for “Purchase Date” and “Condition” fields.
+
+### Security Enhancements
+- Strengthened user authentication.
+- Role-based restrictions on check-in/out to prevent unauthorized actions.
+
+### Dependencies and Technical Changes
+- **Database Update:** Added `purpose` field to transactions (`backend/database/migration_v3.sql`).
+- **Versioning System:**
+  - Added `version.json` as the single source of truth.
+  - Auto-sync to all `package.json` files.
+  - New NPM scripts: `version:patch`, `version:minor`, `version:major`.
+  - New `/api/version` endpoint.
+  - Dynamic version display in UI.
+
+### Bug Fixes
+- None reported; release focused on polishing.
+
+---
 
 ## [1.0.0] - 2025-10-13
 
 ### Added
-- Initial release of Studio Inventory Management System
-- Equipment tracking with barcode/QR code support
-- User management with PIN-based authentication
-- Check-in/check-out transaction system
-- Activity logging and audit trail
-- CSV import functionality
-- Category management with color coding
-- Role-based access control (Admin, Manager, Staff)
-- Docker-based deployment with multi-stage builds
-- Automated CI/CD pipeline with Bitbucket
+- Initial release of Studio Inventory Management System.
+- Equipment tracking with barcode/QR code support.
+- User management with PIN-based authentication.
+- Check-in/check-out transaction system.
+- Activity logging and audit trail.
+- CSV import functionality.
+- Category management with color coding.
+- Role-based access control (Admin, Manager, Staff).
+- Docker-based deployment with multi-stage builds.
+- Automated CI/CD pipeline with Bitbucket.
 
 ### Features
-- SQLite database with migration system
-- React frontend with TypeScript
-- Express.js backend API
-- Responsive UI with mobile support
-- Real-time barcode generation
-- Equipment status tracking
-- Kit contents management
-- Automated relabeling workflow
+- SQLite database with migration system.
+- React frontend with TypeScript.
+- Express.js backend API.
+- Responsive UI with mobile support.
+- Real-time barcode generation.
+- Equipment status tracking.
+- Kit contents management.
+- Automated relabeling workflow.

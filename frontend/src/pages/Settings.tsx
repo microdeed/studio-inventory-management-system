@@ -161,7 +161,12 @@ export const Settings: React.FC = () => {
   };
 
   const downloadTemplate = () => {
-    window.open('/api/import/template', '_blank');
+    const a = document.createElement('a');
+    a.href = '/import-csv-template.csv';
+    a.download = 'import-csv-template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (

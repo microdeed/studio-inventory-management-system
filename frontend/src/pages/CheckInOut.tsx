@@ -250,52 +250,34 @@ export const CheckInOut: React.FC = () => {
 
     try {
       setLoading(true);
-      let successCount = 0;
-      let failCount = 0;
-      const errors: string[] = [];
 
-      for (const equipmentId of selectedEquipment) {
-        try {
-          const response = await fetch('/api/transactions/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              equipment_id: equipmentId,
-              user_id: authenticatedUserId,
-              expected_return_date: expectedReturnDate,
-              purpose: purpose,
-              location: 'user', // Equipment goes with the user
-              notes: notes,
-              created_by: authenticatedUserId
-            })
-          });
+      // Send all equipment IDs as an array in a single request
+      const response = await fetch('/api/transactions/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          equipment_id: selectedEquipment, // Array of equipment IDs
+          user_id: authenticatedUserId,
+          expected_return_date: expectedReturnDate,
+          purpose: purpose,
+          location: 'user', // Equipment goes with the user
+          notes: notes,
+          created_by: authenticatedUserId
+        })
+      });
 
-          if (response.ok) {
-            successCount++;
-          } else {
-            const error = await response.json();
-            failCount++;
-            const item = equipment.find(e => e.id === equipmentId);
-            errors.push(`${item?.name}: ${error.error}`);
-          }
-        } catch (error) {
-          failCount++;
-          const item = equipment.find(e => e.id === equipmentId);
-          errors.push(`${item?.name}: Network error`);
-        }
-      }
-
-      if (successCount > 0) {
+      if (response.ok) {
+        const result = await response.json();
         setMessage({
           type: 'success',
-          text: `Successfully checked out ${successCount} item${successCount > 1 ? 's' : ''} to ${authenticatedUser.full_name}${failCount > 0 ? `. ${failCount} failed.` : ''}`
+          text: `Successfully checked out ${result.transaction_count} item${result.transaction_count > 1 ? 's' : ''} to ${authenticatedUser.full_name}`
         });
+        resetForm();
+        fetchAvailableEquipment();
       } else {
-        setMessage({ type: 'error', text: `All checkouts failed: ${errors.join(', ')}` });
+        const error = await response.json();
+        setMessage({ type: 'error', text: error.error || 'Failed to checkout equipment' });
       }
-
-      resetForm();
-      fetchAvailableEquipment();
     } catch (error) {
       setMessage({ type: 'error', text: 'Network error during checkout' });
     } finally {
@@ -316,56 +298,38 @@ export const CheckInOut: React.FC = () => {
 
     try {
       setLoading(true);
-      let successCount = 0;
-      let failCount = 0;
-      const errors: string[] = [];
 
-      for (const equipmentId of selectedEquipment) {
-        try {
-          const payload: any = {
-            equipment_id: equipmentId,
-            notes: notes,
-            checked_in_by: authenticatedUserId,
-            return_location: returnLocation
-          };
+      const payload: any = {
+        equipment_id: selectedEquipment, // Array of equipment IDs
+        notes: notes,
+        checked_in_by: authenticatedUserId,
+        return_location: returnLocation
+      };
 
-          // Only include condition if user selected one (not empty string)
-          if (returnCondition) {
-            payload.condition_on_return = returnCondition;
-          }
-
-          const response = await fetch('/api/transactions/checkin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-
-          if (response.ok) {
-            successCount++;
-          } else {
-            const error = await response.json();
-            failCount++;
-            const item = equipment.find(e => e.id === equipmentId);
-            errors.push(`${item?.name}: ${error.error}`);
-          }
-        } catch (error) {
-          failCount++;
-          const item = equipment.find(e => e.id === equipmentId);
-          errors.push(`${item?.name}: Network error`);
-        }
+      // Only include condition if user selected one (not empty string)
+      if (returnCondition) {
+        payload.condition_on_return = returnCondition;
       }
 
-      if (successCount > 0) {
+      // Send all equipment IDs as an array in a single request
+      const response = await fetch('/api/transactions/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
         setMessage({
           type: 'success',
-          text: `Successfully checked in ${successCount} item${successCount > 1 ? 's' : ''}${failCount > 0 ? `. ${failCount} failed.` : ''}`
+          text: `Successfully checked in ${result.transaction_count} item${result.transaction_count > 1 ? 's' : ''}`
         });
+        resetForm();
+        fetchCheckedOutEquipment();
       } else {
-        setMessage({ type: 'error', text: `All check-ins failed: ${errors.join(', ')}` });
+        const error = await response.json();
+        setMessage({ type: 'error', text: error.error || 'Failed to check in equipment' });
       }
-
-      resetForm();
-      fetchCheckedOutEquipment();
     } catch (error) {
       setMessage({ type: 'error', text: 'Network error during check-in' });
     } finally {
