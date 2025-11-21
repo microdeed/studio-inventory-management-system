@@ -11,12 +11,14 @@ import {
 } from 'lucide-react';
 import { formatInCentral, addDaysInCentral, getCurrentCentralDateForInput } from '../utils/dateUtils.ts';
 import { sessionManager } from '../utils/sessionManager.ts';
+import { useKeyboardScanner } from '../hooks/useKeyboardScanner.ts';
 
 interface Equipment {
   id: number;
   name: string;
   serial_number: string;
   barcode?: string;
+  qr_code?: string;
   model: string;
   manufacturer: string;
   category_id?: number;
@@ -45,6 +47,14 @@ interface User {
 
 // Transaction interface removed - not currently used
 
+interface ScanIssue {
+  barcode: string;
+  type: 'duplicate' | 'not_found';
+  equipmentName?: string;
+  equipmentId?: number;
+  timestamp: number;
+}
+
 export const CheckInOut: React.FC = () => {
   const [actionSelected, setActionSelected] = useState(false);
   const [mode, setMode] = useState<'checkout' | 'checkin' | null>(null);
@@ -63,6 +73,11 @@ export const CheckInOut: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [authenticatedUserId, setAuthenticatedUserId] = useState<number | null>(null);
   const [authenticatedUserRole, setAuthenticatedUserRole] = useState<string | null>(null);
+
+  // Barcode scanning state
+  const [scanIssues, setScanIssues] = useState<ScanIssue[]>([]);
+  const [recentlyScanned, setRecentlyScanned] = useState<number[]>([]);
+  const [showIssueModal, setShowIssueModal] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -185,6 +200,130 @@ export const CheckInOut: React.FC = () => {
         : [...prev, id]
     );
   };
+
+  // Audio feedback for errors
+  const playErrorBeep = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 400; // Lower frequency for error
+      oscillator.type = 'sine';
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (error) {
+      console.error('Failed to play error beep:', error);
+    }
+  };
+
+  // Handle barcode scanning
+  const handleBarcodeScanned = async (barcode: string) => {
+    console.log('🔍 Processing scanned barcode:', barcode);
+
+    try {
+      // Search for equipment by barcode
+      const response = await fetch(`/api/equipment?search=${encodeURIComponent(barcode)}&limit=1000`);
+      const data = await response.json();
+
+      if (!data.data || data.data.length === 0) {
+        // Not found
+        console.log('❌ Equipment not found for barcode:', barcode);
+        playErrorBeep();
+        setScanIssues(prev => [...prev, {
+          barcode,
+          type: 'not_found',
+          timestamp: Date.now()
+        }]);
+        setShowIssueModal(true);
+        return;
+      }
+
+      // Find exact match by barcode or QR code
+      const exactMatch = data.data.find((item: Equipment) =>
+        item.barcode?.toLowerCase() === barcode.toLowerCase() ||
+        item.qr_code?.toLowerCase() === barcode.toLowerCase()
+      );
+
+      if (!exactMatch) {
+        // No exact barcode or QR code match
+        console.log('❌ No exact barcode/QR code match found:', barcode);
+        playErrorBeep();
+        setScanIssues(prev => [...prev, {
+          barcode,
+          type: 'not_found',
+          timestamp: Date.now()
+        }]);
+        setShowIssueModal(true);
+        return;
+      }
+
+      // Check if equipment is in the current list (available for checkout or checked out for checkin)
+      const isInCurrentList = equipment.some(item => item.id === exactMatch.id);
+
+      if (!isInCurrentList) {
+        // Equipment exists but not available for this operation
+        const reason = mode === 'checkout'
+          ? 'not available for checkout'
+          : 'not checked out by you';
+        console.log(`❌ Equipment found but ${reason}:`, exactMatch.name);
+        playErrorBeep();
+        setScanIssues(prev => [...prev, {
+          barcode,
+          type: 'not_found',
+          equipmentName: exactMatch.name,
+          equipmentId: exactMatch.id,
+          timestamp: Date.now()
+        }]);
+        setShowIssueModal(true);
+        return;
+      }
+
+      // Check if already selected
+      if (selectedEquipment.includes(exactMatch.id)) {
+        // Duplicate scan
+        console.log('⚠️ Equipment already selected:', exactMatch.name);
+        playErrorBeep();
+        setScanIssues(prev => [...prev, {
+          barcode,
+          type: 'duplicate',
+          equipmentName: exactMatch.name,
+          equipmentId: exactMatch.id,
+          timestamp: Date.now()
+        }]);
+        setShowIssueModal(true);
+        return;
+      }
+
+      // Success - add to selection
+      console.log('✅ Equipment found and added:', exactMatch.name);
+      setSelectedEquipment(prev => [...prev, exactMatch.id]);
+
+      // Add to recently scanned for visual highlight
+      setRecentlyScanned(prev => [...prev, exactMatch.id]);
+      setTimeout(() => {
+        setRecentlyScanned(prev => prev.filter(id => id !== exactMatch.id));
+      }, 3000); // Remove highlight after 3 seconds
+
+    } catch (error) {
+      console.error('Error processing barcode:', error);
+      playErrorBeep();
+      setMessage({ type: 'error', text: 'Failed to process barcode scan' });
+    }
+  };
+
+  // Initialize keyboard scanner
+  useKeyboardScanner({
+    onScanComplete: handleBarcodeScanned,
+    enabled: actionSelected && mode !== null
+  });
 
   // Get status badge styling
   const getStatusBadge = (status: string) => {
@@ -626,8 +765,10 @@ export const CheckInOut: React.FC = () => {
                   {equipment.map((item) => (
                     <label
                       key={item.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors cursor-pointer ${
-                        selectedEquipment.includes(item.id)
+                      className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-all duration-300 cursor-pointer ${
+                        recentlyScanned.includes(item.id)
+                          ? 'border-green-500 bg-green-100 shadow-lg scale-105'
+                          : selectedEquipment.includes(item.id)
                           ? 'border-brown-500 bg-brown-50'
                           : 'border-gray-200 hover:border-brown-200 hover:bg-gray-50'
                       }`}
@@ -844,6 +985,125 @@ export const CheckInOut: React.FC = () => {
             </form>
           </div>
         </div>
+        </div>
+      )}
+
+      {/* Scan Issues Modal */}
+      {showIssueModal && scanIssues.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="text-orange-500" size={24} />
+                  <h2 className="text-xl font-semibold text-gray-900">Scan Issues Detected</h2>
+                </div>
+                <button
+                  onClick={() => {
+                    setScanIssues([]);
+                    setShowIssueModal(false);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <p className="text-gray-600 mb-4">
+                The following issues were detected during barcode scanning. Please review and take action:
+              </p>
+
+              <div className="space-y-3">
+                {scanIssues.map((issue, index) => (
+                  <div
+                    key={`${issue.barcode}-${issue.timestamp}`}
+                    className={`p-4 rounded-lg border-2 ${
+                      issue.type === 'duplicate'
+                        ? 'bg-orange-50 border-orange-300'
+                        : 'bg-red-50 border-red-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {issue.type === 'duplicate' ? (
+                            <AlertTriangle className="text-orange-600" size={18} />
+                          ) : (
+                            <AlertTriangle className="text-red-600" size={18} />
+                          )}
+                          <span className="font-semibold text-gray-900">
+                            {issue.type === 'duplicate' ? 'Duplicate Scan' : 'Not Found'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          <div className="font-mono text-xs bg-white px-2 py-1 rounded border border-gray-300 inline-block mb-2">
+                            {issue.barcode}
+                          </div>
+                          {issue.equipmentName && (
+                            <div className="mt-1">
+                              <strong>Equipment:</strong> {issue.equipmentName}
+                            </div>
+                          )}
+                          {issue.type === 'duplicate' && (
+                            <div className="mt-1 text-orange-700">
+                              This equipment is already in your selection list.
+                            </div>
+                          )}
+                          {issue.type === 'not_found' && !issue.equipmentName && (
+                            <div className="mt-1 text-red-700">
+                              No equipment found with this barcode.
+                            </div>
+                          )}
+                          {issue.type === 'not_found' && issue.equipmentName && (
+                            <div className="mt-1 text-red-700">
+                              Equipment found but {mode === 'checkout'
+                                ? 'not available for checkout'
+                                : 'not checked out by you'}.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setScanIssues(prev => prev.filter((_, i) => i !== index));
+                          if (scanIssues.length === 1) {
+                            setShowIssueModal(false);
+                          }
+                        }}
+                        className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1 rounded hover:bg-white transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setScanIssues([]);
+                    setShowIssueModal(false);
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Clear All & Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowIssueModal(false);
+                  }}
+                  className="btn btn-primary"
+                >
+                  Continue Scanning
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

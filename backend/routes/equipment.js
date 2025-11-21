@@ -112,12 +112,13 @@ router.get('/', async (req, res) => {
                 LOWER(e.name) LIKE LOWER(?) OR
                 LOWER(e.serial_number) LIKE LOWER(?) OR
                 LOWER(e.barcode) LIKE LOWER(?) OR
+                LOWER(e.qr_code) LIKE LOWER(?) OR
                 LOWER(e.model) LIKE LOWER(?) OR
                 LOWER(e.manufacturer) LIKE LOWER(?) OR
                 LOWER(c.name) LIKE LOWER(?)
             )`;
             const searchPattern = `%${search}%`;
-            params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+            params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
         }
 
         // Add sorting
