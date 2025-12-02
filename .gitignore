@@ -50,3 +50,4 @@ backups/
 query_*.js
 .claude/
 CLAUDE.MD
+*.backup

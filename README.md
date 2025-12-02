@@ -794,10 +794,164 @@ DATABASE_PATH=./database/inventory.db
 ```
 
 ### Backup Strategy
-The SQLite database file should be backed up regularly:
+
+#### Automated Backup System
+
+The application includes an automated backup system that runs every 5 hours and backs up the database when changes are detected. Backups are stored locally and optionally sent via email.
+
+**Features**:
+- ✅ Scheduled checks every 5 hours
+- ✅ Conditional backup (only if database was modified since last backup)
+- ✅ Local backup storage with automatic cleanup
+- ✅ Email delivery via Gmail SMTP
+- ✅ Configurable retention policy (default: keep last 7 backups)
+- ✅ Activity logging of all backup operations
+- ✅ Manual backup trigger via API
+
+#### Gmail SMTP Configuration
+
+To enable email backup delivery, you need to set up Gmail SMTP with an App Password (not your regular Gmail password).
+
+**Step 1: Enable 2-Factor Authentication**
+1. Go to your Google Account: https://myaccount.google.com/
+2. Navigate to **Security**
+3. Enable **2-Step Verification** if not already enabled
+
+**Step 2: Generate App Password**
+1. While in **Security** settings, scroll to **2-Step Verification**
+2. At the bottom, click on **App passwords**
+3. Select app: **Mail**
+4. Select device: **Other (Custom name)** → Enter "Inventory Backup System"
+5. Click **Generate**
+6. Copy the 16-character app password (shown without spaces)
+
+**Step 3: Configure Environment Variables**
+
+Add these to your `.env` file in the project root:
+
+```env
+# Backup Configuration
+BACKUP_EMAIL_ENABLED=true
+BACKUP_EMAIL_HOST=smtp.gmail.com
+BACKUP_EMAIL_PORT=587
+BACKUP_EMAIL_USER=your-email@gmail.com
+BACKUP_EMAIL_PASSWORD=xxxx xxxx xxxx xxxx    # App password from Step 2
+BACKUP_EMAIL_TO=backup-recipient@example.com  # Where to send backups
+BACKUP_RETENTION_COUNT=7                       # Number of local backups to keep
+```
+
+**Important Notes**:
+- Use the 16-character App Password, NOT your regular Gmail password
+- Gmail has a 25MB attachment limit - backups larger than this will fail
+- For larger databases, consider using cloud storage instead of email
+- Keep the App Password secure and never commit it to version control
+
+#### Backup API Endpoints
+
+**Get Backup Status** (Admin only):
 ```bash
-# Backup command
+GET /api/backup/status
+Headers: X-User-Id: <admin-user-id>
+```
+
+Response:
+```json
+{
+  "success": true,
+  "scheduler": {
+    "isRunning": true,
+    "cronExpression": "0 */5 * * *",
+    "nextRunTime": "2025-12-01T15:00:00.000Z"
+  },
+  "backups": {
+    "totalBackups": 7,
+    "retentionCount": 7,
+    "lastBackupTime": "2025-12-01T10:00:00.000Z",
+    "databaseModifiedTime": "2025-12-01T14:30:00.000Z",
+    "needsBackup": true,
+    "emailEnabled": true,
+    "recentBackups": [...]
+  }
+}
+```
+
+**Trigger Manual Backup** (Admin only):
+```bash
+POST /api/backup/trigger
+Headers: X-User-Id: <admin-user-id>
+Content-Type: application/json
+
+{
+  "force": false   # Set to true to backup even if DB hasn't changed
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Backup completed successfully",
+  "result": {
+    "backup": {
+      "fileName": "inventory-backup-2025-12-01-14-30-00.db",
+      "size": 156000
+    },
+    "email": {
+      "success": true,
+      "messageId": "<xxx@gmail.com>"
+    },
+    "cleanup": {
+      "deleted": 1
+    }
+  }
+}
+```
+
+#### Backup File Location
+
+Local backups are stored in:
+- **Development**: `backend/backups/`
+- **Docker**: Docker volume managed backups
+
+Backup filename format: `inventory-backup-YYYY-MM-DD-HH-MM-SS.db`
+
+#### Manual Backup Command
+
+You can also manually backup the database:
+```bash
+# Development (local)
 cp backend/database/inventory.db backups/inventory-$(date +%Y%m%d).db
+
+# Docker
+docker-compose exec backend cp /app/data/inventory.db /app/data/inventory-backup-$(date +%Y%m%d).db
+```
+
+#### Troubleshooting Backups
+
+**Backup emails not sending**:
+- Verify Gmail App Password is correct
+- Check `BACKUP_EMAIL_ENABLED=true` in `.env`
+- Ensure Gmail account has 2FA enabled
+- Check backend logs for error messages
+- Test SMTP connection manually
+
+**Database too large for email**:
+- Gmail limit: 25MB attachment size
+- Consider cloud storage (S3, Google Cloud Storage) for larger databases
+- Or disable email and rely on local backups only
+
+**Backups not running automatically**:
+- Check backend server logs for scheduler initialization
+- Verify cron schedule: `0 */5 * * *` (every 5 hours)
+- Check backup status via API: `GET /api/backup/status`
+- Ensure database is being modified (scheduler only backs up if changes detected)
+
+**Force a backup immediately**:
+```bash
+curl -X POST http://localhost:5000/api/backup/trigger \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -d '{"force": true}'
 ```
 
 ## Troubleshooting

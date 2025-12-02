@@ -59,6 +59,7 @@ const upload = multer({
 // Initialize utilities
 const { ensureLogDir } = require('./utils/activityLogger');
 const { syncChangelogToDatabase } = require('./utils/syncChangelog');
+const backupScheduler = require('./utils/backupScheduler');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -72,6 +73,7 @@ const importRoutes = require('./routes/import');
 const versionRoutes = require('./routes/version');
 const printRoutes = require('./routes/print');
 const activityRoutes = require('./routes/activity');
+const backupRoutes = require('./routes/backup');
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -85,6 +87,7 @@ app.use('/api/import', importRoutes);
 app.use('/api/version', versionRoutes);
 app.use('/api/print', printRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -133,6 +136,9 @@ async function startServer() {
         // Sync CHANGELOG.md to release_notes database
         await syncChangelogToDatabase(database);
 
+        // Start backup scheduler
+        await backupScheduler.start();
+
         // Start listening
         app.listen(PORT, () => {
             console.log(`Studio Inventory API server running on port ${PORT}`);
@@ -142,6 +148,7 @@ async function startServer() {
         // Graceful shutdown
         process.on('SIGINT', async () => {
             console.log('\nReceived SIGINT. Graceful shutdown...');
+            backupScheduler.stop();
             await database.close();
             process.exit(0);
         });
